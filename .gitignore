@@ -35,3 +35,6 @@ npm-debug.log*
 
 # Large local template reference (not required for deploy)
 shofy-multipurpose-ecommerce-html-template-*/
+
+# Local deploy secrets
+deploy.env

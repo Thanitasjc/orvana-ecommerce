@@ -21,6 +21,8 @@ services:
         sync: false
       - key: DB_CONNECTION
         value: pgsql
+      - key: DB_SSLMODE
+        value: require
       - key: DATABASE_URL
         sync: false
       - key: FRONTEND_URL
