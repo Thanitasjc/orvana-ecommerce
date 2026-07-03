@@ -1,12 +1,11 @@
 services:
   - type: web
     name: aesthete-api
-    runtime: php
+    runtime: docker
     region: singapore
     plan: free
     rootDir: backend
-    buildCommand: composer install --no-dev --optimize-autoloader && php artisan config:cache && php artisan route:cache
-    startCommand: php artisan migrate --force && php artisan storage:link && php artisan serve --host=0.0.0.0 --port=$PORT
+    dockerfilePath: ./Dockerfile
     healthCheckPath: /api/v1/categories
     envVars:
       - key: APP_ENV
