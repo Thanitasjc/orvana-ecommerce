@@ -1,285 +1,190 @@
-# Project1 E-commerce System
+# AESTHETE Fashion — ระบบ Omnichannel (POS + E-Commerce)
 
-ระบบ E-commerce บน Laravel 12 ที่แยก Frontend เป็น Module และใช้ Filament สำหรับ Admin Panel
+โปรเจกต์ร้านแฟชั่นแบบ **Omnichannel**: สต็อกและออเดอร์รวมศูนย์ที่ Laravel ขายได้ทั้ง **ร้านออนไลน์** (Shofy template) และ **POS หน้าร้าน** พร้อม **หลังบ้าน Admin**
 
-## Overview
+อ้างอิง logic จาก `omnichannel_fashion_pos_e_commerce.tsx` และ UI ร้านจากโฟลเดอร์ Shofy HTML template
 
-โปรเจกต์นี้รองรับการทำงานหลักดังนี้:
+---
 
-- แสดงสินค้า/หมวดหมู่/คอนเทนต์หน้าเว็บ
-- ระบบลูกค้า (สมัครสมาชิก, เข้าสู่ระบบ, ออกจากระบบ)
-- ระบบลูกค้าเพิ่มเติม (ลืมรหัสผ่าน, reset password, ยืนยันอีเมล, โปรไฟล์ลูกค้า)
-- ระบบตะกร้าแบบใช้งานจริง
-- Checkout สร้างออเดอร์จริง
-- บันทึกการชำระเงิน
-- ตัดสต็อกและเก็บประวัติสต็อก
-- รองรับ payment webhook พร้อม signature verification
-- หลังบ้านจัดการสินค้าและออเดอร์
+## โครงสร้างโปรเจกต์
 
-## Tech Stack
+```
+project1/
+├── frontend/          # Next.js 16 (App Router) — หน้าบ้าน + POS + Admin
+├── backend/           # Laravel 12 API — ธุรกิจ + ฐานข้อมูล
+├── shofy-multipurpose-ecommerce-html-template-.../   # Template ต้นฉบับ (อ้างอิง)
+└── omnichannel_fashion_pos_e_commerce.tsx            # Prototype React (อ้างอิง logic)
+```
 
-- PHP `^8.2`
-- Laravel `^12.0`
-- Filament `^4.11`
-- nwidart/laravel-modules `^12.0`
-- spatie/laravel-translatable `^6.11.4`
+---
 
-ดูจาก `composer.json`
+## สถาปัตยกรรม
 
-## Project Structure
+| ชั้น | เทคโนโลยี | หน้าที่ |
+|------|-----------|--------|
+| ร้านออนไลน์ | Next.js + Shofy CSS | ลูกค้าทั่วไป / สมาชิก |
+| POS | Next.js + Tailwind | พนักงานขายหน้าร้าน |
+| Admin | Next.js + Tailwind | ผู้ดูแลระบบ |
+| API | Laravel + Sanctum | สินค้า, สต็อก, ออเดอร์, loyalty |
 
-### Core
+### การแยก Login (สำคัญ)
 
-- `app/Models` โมเดลหลักของระบบ
-- `app/Services/Ecommerce` business logic ด้าน ecommerce
-- `app/Filament/Resources` หลังบ้าน (Products, Orders, Inventory Transactions ฯลฯ)
-- `config/ecommerce.php` ตั้งค่า webhook security และ admin notify
+| ระบบ | URL | ผู้ใช้ | เข้าได้ |
+|------|-----|--------|--------|
+| สมาชิก | `/login`, `/account` | ลูกค้า (`customers`) | บัญชีตัวเองเท่านั้น |
+| POS | `/pos/login` → `/pos` | พนักงาน `cashier` หรือ `admin` | ขายหน้าร้าน |
+| Admin | `/admin/login` → `/admin` | `admin` เท่านั้น | รายงาน / คลัง |
 
-### Frontend Module
+**สมาชิกไม่สามารถเข้า POS หรือ Admin** — แยก token, middleware และ guard คนละชุด
 
-- `Modules/Frontend/routes/web.php` เส้นทางทั้งหมดของหน้าเว็บ
-- `Modules/Frontend/app/Http/Controllers` controller ของหน้าเว็บ, cart, checkout, auth, webhook
-- `Modules/Frontend/resources/views` blade templates และ partials
+---
 
-### Database
+## ความต้องการของระบบ
 
-- `database/migrations` โครงสร้างฐานข้อมูล
-- `database/seeders` ข้อมูลตั้งต้น (เช่น admin user)
+- PHP 8.2+
+- Composer
+- Node.js 20+
+- npm
 
-## Main Database Tables
+---
 
-### Catalog/CMS
+## การติดตั้ง
 
-- `categories`
-- `products`
-- `banners`
-- `services`
-- `blog_posts`
-- `testimonials`
-
-### E-commerce
-
-- `carts`
-- `cart_items`
-- `orders`
-- `order_items`
-- `payments`
-- `inventory_transactions`
-
-### Users
-
-- `users` (มี `is_admin` สำหรับสิทธิ์เข้าหลังบ้าน)
-
-## End-to-End Flow
-
-1. ลูกค้าเข้าสู่ระบบ
-2. เพิ่มสินค้าเข้าตะกร้า (`POST /cart/items`)
-3. แก้จำนวน/ลบสินค้า (`PATCH/DELETE /cart/items/{item}`)
-4. ลูกค้าต้องยืนยันอีเมลก่อน checkout
-5. ระบบสร้าง `orders`, `order_items`, `payments` (checkout ตรวจสต็อกพอ แต่ยังไม่ตัด)
-6. เมื่อออเดอร์เป็น `paid` → ตัดสต็อก + บันทึก `inventory_transactions` ประเภท `sale` (`OrderInventoryService`)
-7. เมื่อออเดอร์เป็น `cancelled` → คืนสต็อก + บันทึก `return` (ถ้าเคยตัดไปแล้ว)
-8. ระบบส่ง notification (order placed / status updated)
-9. รองรับ webhook อัปเดตสถานะจ่ายเงิน (`POST /payments/webhook`) — `paid`/`cancelled` จัดการสต็อกเช่นกัน
-
-## Important Routes
-
-ดูไฟล์ `Modules/Frontend/routes/web.php`
-
-- Home: `GET /`
-- Product list: `GET /all-products/{category?}`
-- Product detail: `GET /product-single-1/{slug}`
-- Cart page: `GET /shopping-cart`
-- Checkout page: `GET /check-out` (auth + verified required)
-- Add cart: `POST /cart/items`
-- Update cart item: `PATCH /cart/items/{item}`
-- Remove cart item: `DELETE /cart/items/{item}`
-- Place order: `POST /checkout/place-order` (auth + verified required)
-- Payment webhook: `POST /payments/webhook`
-- Auth forgot password: `POST /auth/forgot-password`
-- Auth reset password form: `GET /auth/reset-password/{token}`
-- Auth reset password submit: `POST /auth/reset-password`
-- Email verify notice: `GET /email/verify`
-- Email verify callback: `GET /email/verify/{id}/{hash}`
-- Email resend verify: `POST /email/verification-notification`
-- Customer profile: `GET /account/profile` + `POST /account/profile` (auth + verified required)
-- Customer orders: `GET /account/orders` (auth + verified required)
-- Customer order detail: `GET /account/orders/{order}` (auth + verified required)
-
-## Payment Webhook Security
-
-ระบบ webhook ตรวจสอบ signature แบบ HMAC SHA-256:
-
-- Secret จาก env: `PAYMENT_WEBHOOK_SECRET`
-- Header ชื่อจาก env: `PAYMENT_SIGNATURE_HEADER` (default: `X-Payment-Signature`)
-- เปรียบเทียบค่า signature ก่อนประมวลผล
-- หากไม่ถูกต้อง ตอบ `401 Invalid signature`
-
-ตั้งค่าได้ที่ `config/ecommerce.php`
-
-## Shipment Workflow
-
-ระบบออเดอร์รองรับข้อมูลขนส่ง:
-
-- `shipping_carrier`
-- `tracking_number`
-- `shipped_at`
-- `delivered_at`
-- `status_note`
-
-และรองรับสถานะออเดอร์เช่น:
-
-- `pending`
-- `paid`
-- `processing`
-- `shipped`
-- `completed`
-- `cancelled`
-
-## Notifications
-
-ระบบมี notification หลัก:
-
-- `OrderPlacedNotification`
-- `OrderStatusUpdatedNotification`
-
-ผ่าน service: `app/Services/Ecommerce/OrderNotificationService.php`
-
-โดยส่งให้:
-
-- ลูกค้า (owner ของ order หรือ customer email)
-- แอดมิน (จาก `ECOMMERCE_ADMIN_EMAIL`)
-
-## Customer Auth Flow (เพิ่มเติม)
-
-### Register/Login/Logout
-
-- สมัครสมาชิกผ่าน `POST /auth/register`
-- เข้าสู่ระบบผ่าน `POST /auth/login`
-- ออกจากระบบผ่าน `POST /auth/logout`
-
-### Email Verification
-
-- หลังสมัครสมาชิก ระบบส่งอีเมล verify
-- ลูกค้าที่ไม่ verify จะเข้า checkout/account routes ที่บังคับ verified ไม่ได้
-- หน้าแจ้งเตือน verify: `/email/verify`
-- ขอส่งลิงก์ยืนยันใหม่: `POST /email/verification-notification`
-- ถ้า `MAIL_MAILER=log` หรือ `array` หน้า `/email/verify` จะแสดงปุ่ม `Verify Email Now (Local)` สำหรับทดสอบในเครื่อง
-
-### Forgot/Reset Password
-
-- ส่งลิงก์ reset จาก modal forgot password (`POST /auth/forgot-password`)
-- ฟอร์มตั้งรหัสใหม่ที่ `/auth/reset-password/{token}`
-- submit รหัสใหม่ผ่าน `POST /auth/reset-password`
-
-### Customer Profile
-
-- หน้าโปรไฟล์ลูกค้า: `/account/profile`
-- แก้ชื่อ/อีเมลได้
-- ถ้าเปลี่ยนอีเมล ระบบจะ reset `email_verified_at` และส่ง verify mail ใหม่
-- Header สำหรับผู้ใช้ที่ login แล้วมีทางลัด `My Profile`, `My Orders`, และ `Logout`
-
-## Installation & Setup
-
-### 1) Install dependencies
+### 1. Backend (Laravel)
 
 ```bash
+cd backend
 composer install
-npm install
-```
-
-### 2) Environment
-
-```bash
-cp .env.example .env
+cp .env.example .env   # ถ้ายังไม่มี .env
 php artisan key:generate
-```
-
-ตั้งค่าที่สำคัญใน `.env`:
-
-- `APP_URL`
-- `DB_*`
-- `MAIL_*`
-- `PAYMENT_WEBHOOK_SECRET`
-- `PAYMENT_SIGNATURE_HEADER`
-- `ECOMMERCE_ADMIN_EMAIL`
-
-### 3) Database
-
-```bash
-php artisan migrate --force
-php artisan db:seed
-```
-
-### 4) Storage link + Frontend assets
-
-```bash
-php artisan storage:link
-npm run build
-```
-
-### 5) Run app
-
-```bash
+php artisan migrate --seed
 php artisan serve
 ```
 
-## Admin Access
+API จะรันที่: **http://localhost:8000**  
+Prefix: **http://localhost:8000/api/v1**
 
-Seeder default admin (ดู `database/seeders/AdminUserSeeder.php`):
-
-- Email: `admin@orvana.test`
-- Password: `password`
-
-Admin URL:
-
-- `/admin`
-
-จัดการผู้ใช้/เพิ่ม admin ใหม่: เมนู **ระบบ → ผู้ใช้** ใน Filament (`/admin/users`)
-
-## Testing
-
-รันเทสต์ทั้งหมด:
+### 2. Frontend (Next.js)
 
 ```bash
-php artisan test
+cd frontend
+npm install
+cp .env.local.example .env.local
+npm run dev
 ```
 
-ไฟล์เทสต์หลัก:
+เว็บจะรันที่: **http://localhost:3000**
 
-- `tests/Feature/EcommerceFlowTest.php`
+### 3. Assets Shofy
 
-ครอบคลุม:
+ไฟล์ CSS/รูปถูก copy ไปที่ `frontend/public/assets/` แล้ว (จาก template Shofy)
 
-- checkout + order + inventory transaction
-- webhook update payment/order status
-- webhook invalid signature
+---
 
-## Dev Commands
+## บัญชีทดสอบ (หลัง seed)
 
-รันโหมดพัฒนาแบบครบ (server, queue, logs, vite) ตาม `composer.json`:
+| บทบาท | อีเมล | รหัสผ่าน |
+|--------|-------|----------|
+| Admin | `admin@aesthete.local` | `password` |
+http://localhost:3000/admin/login
+| พนักงาน POS | `cashier@aesthete.local` | `password` |
+http://localhost:3000/pos/login
+
+| สมาชิก | `ananya@mail.com` | `password` |
+
+สมาชิกคนอื่น: `panuwat@mail.com`, `nathrada@mail.com`, `worawut@mail.com` (รหัสผ่าน `password`)
+
+---
+
+## API หลัก (v1)
+
+### สาธารณะ
+
+- `GET /api/v1/categories`
+- `GET /api/v1/products`
+- `GET /api/v1/products/{slug}`
+
+### สมาชิก (`Authorization: Bearer` + token ของ Customer)
+
+- `POST /api/v1/member/register`
+- `POST /api/v1/member/login`
+- `GET /api/v1/member/me`
+- `GET /api/v1/member/orders`
+- `POST /api/v1/member/checkout`
+
+### พนักงาน
+
+- `POST /api/v1/staff/pos/login` — cashier / admin
+- `POST /api/v1/staff/admin/login` — admin เท่านั้น
+
+### POS (ต้อง login พนักงาน)
+
+- `GET /api/v1/pos/products`
+- `GET /api/v1/pos/customers/search?q=`
+- `POST /api/v1/pos/checkout`
+
+### Admin
+
+- `GET /api/v1/admin/dashboard`
+
+---
+
+## เส้นทาง Frontend
+
+| Path | คำอธิบาย |
+|------|----------|
+| `/` | หน้าแรกร้าน (Shofy) |
+| `/shop` | รายการสินค้า |
+| `/products/[slug]` | รายละเอียดสินค้า + SKU |
+| `/login`, `/register` | สมาชิก |
+| `/account` | หลังบ้านสมาชิก (ต้อง login) |
+| `/pos/login`, `/pos` | POS |
+| `/admin/login`, `/admin` | Admin |
+
+---
+
+## Omnichannel — สต็อกกลาง
+
+- ทุก SKU อยู่ในตาราง `product_variations`
+- เมื่อ checkout (Online หรือ POS) ระบบใช้ **DB Transaction** + `lockForUpdate()` ตัดสต็อก
+- สมาชิกได้แต้ม: ทุก 100 บาท = 1 แต้ม, อัป tier ตามยอดสะสม (Silver / Gold / Platinum)
+- บริการหลัก: `InventoryService`, `OrderService`, `LoyaltyService`
+
+---
+
+## Phase ถัดไป (แนะนำ)
+
+1. แปลง section ใน `index-2.html` เป็น React components เต็มรูปแบบ
+2. ตะกร้าสินค้า (Zustand) + checkout ฝั่งร้าน
+3. POS เต็มรูปแบบจาก prototype (ตะกร้า, ใบเสร็จ, เลือกสมาชิก)
+4. Admin CRUD สินค้า / หมวด / รายงาน
+5. Payment gateway, อีเมลแจ้งออเดอร์
+
+---
+
+## คำสั่งที่ใช้บ่อย
 
 ```bash
-composer run dev
+# Backend
+cd backend && php artisan migrate:fresh --seed
+cd backend && php artisan serve
+
+# Frontend
+cd frontend && npm run dev
+cd frontend && npm run build
 ```
 
-## Troubleshooting
+---
 
-- รูปไม่ขึ้น: `php artisan storage:link`
-- CSS/JS เก่า: `npm run build` แล้ว hard refresh
-- เข้า admin ไม่ได้: รัน `php artisan db:seed --class=AdminUserSeeder`
-- webhook fail: เช็ก `PAYMENT_WEBHOOK_SECRET` และ header signature
-- cart/offcanvas แปลก: ล้าง browser cache และทดสอบใหม่
-- เวลาใน admin ไม่ตรง: ตั้ง `APP_TIMEZONE=Asia/Bangkok` ใน `.env` แล้วรัน `php artisan config:clear` (ออเดอร์เก่าที่บันทึกตอน timezone เป็น UTC อาจยังเพี้ยน 7 ชม. — สั่งซื้อใหม่เพื่อทดสอบ หรือปรับ `placed_at` ในฐานข้อมูล)
+## หมายเหตุ
 
-## Production Recommendations
+- API ใช้ **Bearer token** (ไม่ใช้ Sanctum CSRF cookie) — ถ้าเจอ `CSRF token mismatch` ตรวจว่าไม่ได้เปิด `EnsureFrontendRequestsAreStateful` บน API routes ใน `bootstrap/app.php`
+- Template Shofy ต้นฉบับอยู่ที่ `shofy-multipurpose-ecommerce-html-template-2025-09-17-10-18-00-utc/` — ไม่แก้ไขโดยตรง
+- Prototype `omnichannel_fashion_pos_e_commerce.tsx` เก็บไว้เป็น reference สำหรับ POS/Admin UI
 
-- เปลี่ยนรหัสผ่าน admin ทันที
-- ตั้ง webhook secret ที่เดายาก
-- ใช้ HTTPS จริง
-- ตั้ง queue worker และ mail transport จริง
-- สำรองฐานข้อมูลสม่ำเสมอ
+---
 
-## License
+## ใบอนุญาต
 
-Internal project.
+โค้ดใน `frontend/` และ `backend/` เป็นของโปรเจกต์นี้  
+Template Shofy เป็นไฟล์จากผู้ขาย template — ตรวจสอบ license ของ template ก่อนใช้งานเชิงพาณิชย์
