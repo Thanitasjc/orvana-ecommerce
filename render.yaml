@@ -18,6 +18,8 @@ services:
         generateValue: true
       - key: APP_URL
         sync: false
+      - key: DB_SCHEMA
+        value: aesthete
       - key: DB_CONNECTION
         value: pgsql
       - key: DB_SSLMODE
