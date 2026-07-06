@@ -162,6 +162,25 @@ http://localhost:3000/pos/login
 
 ---
 
+## Deploy (Production)
+
+| Service | URL | Auto-deploy |
+|---------|-----|-------------|
+| Frontend (Vercel) | https://frontend-beta-teal-71.vercel.app | Push `main` → GitHub → Vercel |
+| API (Render) | https://aesthete-api.onrender.com | Push `main` → GitHub → Render |
+
+**Vercel:** โปรเจกต์ `frontend` ตั้ง Root Directory = `frontend` แล้ว — push ไป `main` จะ build อัตโนมัติ
+
+```bash
+# Deploy frontend ด้วยมือ (ถ้าจำเป็น)
+cd frontend && npx vercel deploy --prod --yes
+
+# Migrate DB บน Supabase (คูปอง / schema ใหม่)
+cd backend && php scripts/run-coupon-migrations.php
+```
+
+---
+
 ## คำสั่งที่ใช้บ่อย
 
 ```bash
