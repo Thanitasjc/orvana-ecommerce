@@ -174,14 +174,14 @@ export function AdminBlogFormModal({
             </div>
           </div>
 
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-400">เนื้อหาบทความ</label>
-            <AdminRichTextEditor
-              value={form.content}
-              onChange={(content) => setForm((current) => ({ ...current, content }))}
-              placeholder="เขียนเนื้อหาบทความ..."
-            />
-          </div>
+          <AdminRichTextEditor
+            label="เนื้อหาบทความ (HTML)"
+            required
+            showTableHelp
+            value={form.content}
+            onChange={(content) => setForm((current) => ({ ...current, content }))}
+            placeholder="เริ่มพิมพ์เนื้อหา..."
+          />
 
           {error ? <p className="text-sm text-rose-400">{error}</p> : null}
 

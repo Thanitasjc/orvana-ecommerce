@@ -241,10 +241,9 @@ export function AdminProductFormModal({
             </div>
 
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs font-semibold text-slate-400">
-                รายละเอียดแท็บ Description (แก้ไขได้ตามสินค้า)
-              </label>
               <AdminRichTextEditor
+                label="รายละเอียดแท็บ Description (แก้ไขได้ตามสินค้า)"
+                showTableHelp
                 value={form.detail_content}
                 onChange={(detail_content) => setForm((current) => ({ ...current, detail_content }))}
                 placeholder="เช่น หัวข้อ คุณภาพจาก AESTHETE และรายละเอียดเพิ่มเติม..."

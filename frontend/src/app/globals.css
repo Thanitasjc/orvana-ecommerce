@@ -46,10 +46,54 @@ body {
   }
 }
 
-.admin-rich-text-editor:empty::before {
-  content: attr(data-placeholder);
+.admin-quill-editor .ql-editor {
+  color: #f8fafc;
+}
+
+.admin-quill-editor .ql-editor.ql-blank::before {
   color: #64748b;
-  pointer-events: none;
+  font-style: normal;
+}
+
+.admin-quill-editor .ql-stroke {
+  stroke: #cbd5e1;
+}
+
+.admin-quill-editor .ql-fill,
+.admin-quill-editor .ql-stroke.ql-fill {
+  fill: #cbd5e1;
+}
+
+.admin-quill-editor .ql-picker-label {
+  color: #e2e8f0;
+}
+
+.admin-quill-editor .ql-picker-options {
+  background: #0f172a;
+  border-color: #475569;
+}
+
+.admin-quill-editor .ql-picker-item {
+  color: #e2e8f0;
+}
+
+.admin-quill-editor .ql-toolbar button:hover,
+.admin-quill-editor .ql-toolbar button.ql-active,
+.admin-quill-editor .ql-toolbar .ql-picker-label:hover,
+.admin-quill-editor .ql-toolbar .ql-picker-label.ql-active {
+  color: #fff;
+}
+
+.admin-quill-editor .ql-toolbar button:hover .ql-stroke,
+.admin-quill-editor .ql-toolbar button.ql-active .ql-stroke,
+.admin-quill-editor .ql-toolbar .ql-picker-label:hover .ql-stroke,
+.admin-quill-editor .ql-toolbar .ql-picker-label.ql-active .ql-stroke {
+  stroke: #fff;
+}
+
+.admin-quill-editor .ql-toolbar button:hover .ql-fill,
+.admin-quill-editor .ql-toolbar button.ql-active .ql-fill {
+  fill: #fff;
 }
 
 .tp-product-details-desc-content h3 {
