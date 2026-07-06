@@ -13,5 +13,6 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(OmnichannelSeeder::class);
         $this->call(CouponSeeder::class);
+        $this->call(BlogSeeder::class);
     }
 }

@@ -7,6 +7,7 @@ import { FeaturedProductSlider } from "@/components/shop/home/FeaturedProductSli
 import { TrendingArrivalsSection } from "@/components/shop/home/TrendingArrivalsSection";
 import { BlogNewsSection } from "@/components/shop/home/BlogNewsSection";
 import { BestSellerSection } from "@/components/shop/home/BestSellerSection";
+import { fetchBlogs } from "@/lib/api/blogs";
 import {
   fetchHomepageCms,
   mapHeroSlidesForBanner,
@@ -25,10 +26,11 @@ import {
 } from "@/lib/api/products";
 
 export default async function HomePage() {
-  const [allProducts, featuredProducts, cms] = await Promise.all([
+  const [allProducts, featuredProducts, cms, blogsRes] = await Promise.all([
     getProducts(),
     getProducts({ featured: true }),
     fetchHomepageCms(),
+    fetchBlogs({ per_page: 3 }),
   ]);
 
   const heroSlides = mapHeroSlidesForBanner(cms.heroSlides);
@@ -66,7 +68,7 @@ export default async function HomePage() {
       />
       <TrendingArrivalsSection items={trendingItems} />
       <BestSellerSection items={bestSellerItems} />
-      <BlogNewsSection />
+      <BlogNewsSection posts={blogsRes.data} />
 
       <section className="tp-product-area pt-80 pb-65">
         <div className="container">

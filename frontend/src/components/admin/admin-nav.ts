@@ -12,6 +12,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { href: "/admin/orders", label: "ออเดอร์", icon: "🧾" },
   { href: "/admin/members", label: "สมาชิก (CRM)", icon: "👥" },
   { href: "/admin/cms", label: "CMS หน้าร้าน", icon: "🖥️" },
+  { href: "/admin/blogs", label: "บทความ", icon: "📰" },
 ];
 
 export const ADMIN_QUICK_LINKS = [

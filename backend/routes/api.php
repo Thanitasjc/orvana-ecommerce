@@ -3,12 +3,14 @@
 use App\Http\Controllers\Api\V1\Admin\AdminHeaderCmsController;
 use App\Http\Controllers\Api\V1\Admin\AdminCmsController;
 use App\Http\Controllers\Api\V1\Admin\AdminCouponController;
+use App\Http\Controllers\Api\V1\Admin\AdminBlogController;
 use App\Http\Controllers\Api\V1\Admin\AdminCategoryController;
 use App\Http\Controllers\Api\V1\Admin\AdminCustomerController;
 use App\Http\Controllers\Api\V1\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\V1\Admin\AdminOrderController;
 use App\Http\Controllers\Api\V1\Admin\AdminProductController;
 use App\Http\Controllers\Api\V1\CouponController;
+use App\Http\Controllers\Api\V1\BlogController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\HeaderCmsController;
 use App\Http\Controllers\Api\V1\HomepageCmsController;
@@ -29,6 +31,8 @@ Route::prefix('v1')->group(function () {
   Route::get('cms/header', [HeaderCmsController::class, 'show']);
   Route::get('coupons', [CouponController::class, 'index']);
   Route::post('coupons/validate', [CouponController::class, 'validateCode']);
+  Route::get('blogs', [BlogController::class, 'index']);
+  Route::get('blogs/{slug}', [BlogController::class, 'show']);
 
   Route::prefix('member')->group(function () {
     Route::post('register', [MemberAuthController::class, 'register']);
@@ -96,5 +100,11 @@ Route::prefix('v1')->group(function () {
       Route::post('coupons', [AdminCouponController::class, 'store']);
       Route::patch('coupons/{coupon}', [AdminCouponController::class, 'update']);
       Route::delete('coupons/{coupon}', [AdminCouponController::class, 'destroy']);
+      Route::get('blogs', [AdminBlogController::class, 'index']);
+      Route::post('blogs/upload-image', [AdminBlogController::class, 'uploadImage']);
+      Route::post('blogs', [AdminBlogController::class, 'store']);
+      Route::get('blogs/{blog}', [AdminBlogController::class, 'show']);
+      Route::patch('blogs/{blog}', [AdminBlogController::class, 'update']);
+      Route::delete('blogs/{blog}', [AdminBlogController::class, 'destroy']);
     });
 });

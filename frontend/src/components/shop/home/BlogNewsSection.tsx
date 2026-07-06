@@ -1,43 +1,46 @@
+/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
-
-type BlogPost = {
-  id: string;
-  title: string;
-  image: string;
-  date: string;
-  href: string;
-  tags: string[];
-};
+import type { BlogPost } from "@/lib/api/blogs";
+import { blogHref, formatBlogDate } from "@/lib/api/blogs";
+import { resolveProductImage } from "@/lib/api/products";
 
 type BlogNewsSectionProps = {
   posts?: BlogPost[];
   moreHref?: string;
 };
 
+const DEFAULT_BLOG_IMAGE = "/assets/img/blog/2/blog-1.jpg";
+
 const defaultPosts: BlogPost[] = [
   {
-    id: "b-1",
+    id: 1,
     title: "The 'Boomerang' Employees Returning After Quitting",
+    slug: "boomerang-employees",
     image: "/assets/img/blog/2/blog-1.jpg",
-    date: "14 July, 2023",
-    href: "/blog/boomerang-employees",
     tags: ["Fashion", "Lift Style", "News"],
+    author: "AESTHETE Editorial",
+    is_published: true,
+    published_at: "2023-07-14T00:00:00.000Z",
   },
   {
-    id: "b-2",
+    id: 2,
     title: "Fast fashion: How clothes are linked to climate change",
+    slug: "fast-fashion-climate-change",
     image: "/assets/img/blog/2/blog-2.jpg",
-    date: "28 May, 2023",
-    href: "/blog/fast-fashion-climate-change",
     tags: ["Fashion", "Lift Style", "News"],
+    author: "AESTHETE Editorial",
+    is_published: true,
+    published_at: "2023-05-28T00:00:00.000Z",
   },
   {
-    id: "b-3",
+    id: 3,
     title: "The Sound Of Fashion: Malcolm McLaren Words",
+    slug: "sound-of-fashion",
     image: "/assets/img/blog/2/blog-3.jpg",
-    date: "01 April, 2023",
-    href: "/blog/sound-of-fashion",
     tags: ["Fashion", "Lift Style", "News"],
+    author: "AESTHETE Editorial",
+    is_published: true,
+    published_at: "2023-04-01T00:00:00.000Z",
   },
 ];
 
@@ -50,13 +53,7 @@ export function BlogNewsSection({ posts = defaultPosts, moreHref = "/blog" }: Bl
             <div className="tp-section-title-wrapper-2 mb-50 text-center">
               <span className="tp-section-title-pre-2">
                 Our Blog &amp; News
-                <svg
-                  width="82"
-                  height="22"
-                  viewBox="0 0 82 22"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
+                <svg width="82" height="22" viewBox="0 0 82 22" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path
                     d="M81 14.5798C0.890564 -8.05914 -5.81154 0.0503902 5.00322 21"
                     stroke="currentColor"
@@ -77,24 +74,27 @@ export function BlogNewsSection({ posts = defaultPosts, moreHref = "/blog" }: Bl
             <div key={post.id} className="col-xl-4 col-lg-4 col-md-6">
               <div className="tp-blog-item-2 mb-40">
                 <div className="tp-blog-thumb-2 p-relative fix">
-                  <Link href={post.href}>
-                    <img src={post.image} alt={post.title} />
+                  <Link href={blogHref(post.slug)}>
+                    <img
+                      src={resolveProductImage(post.image, DEFAULT_BLOG_IMAGE)}
+                      alt={post.title}
+                    />
                   </Link>
                   <div className="tp-blog-meta-date-2">
-                    <span>{post.date}</span>
+                    <span>{formatBlogDate(post.published_at)}</span>
                   </div>
                 </div>
                 <div className="tp-blog-content-2 has-thumbnail">
                   <div className="tp-blog-meta-2">
                     <span>#</span>
                     {post.tags.map((tag) => (
-                      <Link key={`${post.id}-${tag}`} href="/blog">
+                      <Link key={`${post.id}-${tag}`} href={`/blog?tag=${encodeURIComponent(tag)}`}>
                         {tag}
                       </Link>
                     ))}
                   </div>
                   <h3 className="tp-blog-title-2">
-                    <Link href={post.href}>{post.title}</Link>
+                    <Link href={blogHref(post.slug)}>{post.title}</Link>
                   </h3>
                 </div>
               </div>
@@ -115,4 +115,3 @@ export function BlogNewsSection({ posts = defaultPosts, moreHref = "/blog" }: Bl
     </section>
   );
 }
-
