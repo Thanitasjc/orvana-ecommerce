@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AdminProductImagePicker } from "@/components/admin/AdminProductImagePicker";
 import type { HeroMediaType, HeroSlideRecord } from "@/lib/cms/homepageCms";
+import { parseYouTubeId } from "@/lib/cms/youtube";
 
 type AdminCmsHeroFormModalProps = {
   open: boolean;
@@ -47,7 +48,14 @@ export function AdminCmsHeroFormModal({
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (!form.adminName.trim()) return;
-    onSave(form);
+
+    const youtubeId =
+      form.mediaType === "youtube" ? parseYouTubeId(form.youtubeId) ?? form.youtubeId?.trim() : undefined;
+
+    onSave({
+      ...form,
+      youtubeId: youtubeId || undefined,
+    });
   }
 
   return (
@@ -115,13 +123,16 @@ export function AdminCmsHeroFormModal({
               </div>
             ) : (
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm text-slate-400">YouTube Video ID</label>
+                <label className="mb-1 block text-sm text-slate-400">YouTube URL หรือ Video ID</label>
                 <input
                   value={form.youtubeId ?? ""}
                   onChange={(e) => patch({ youtubeId: e.target.value })}
                   className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
-                  placeholder="x5hkD526A5M"
+                  placeholder="https://www.youtube.com/watch?v=x5hkD526A5M"
                 />
+                <p className="mt-2 text-xs text-slate-500">
+                  รองรับลิงก์เต็มหรือ Video ID เช่น x5hkD526A5M — รูปภาพด้านล่างเป็นตัวเลือก (poster) ไม่บังคับ
+                </p>
                 <div className="mt-3">
                   <AdminProductImagePicker
                     value={form.image}

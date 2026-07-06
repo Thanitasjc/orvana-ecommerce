@@ -8,9 +8,12 @@ import type {
   ProductCurationItem,
 } from "@/lib/cms/homepageCms";
 import { defaultHomepageCms } from "@/lib/cms/homepageCms";
+import { parseYouTubeId, youtubeThumbnailUrl } from "@/lib/cms/youtube";
 
 export type StorefrontHeroSlide = {
+  mediaType: "image" | "youtube";
   image: string;
+  youtubeId?: string;
   title?: string;
   subtitle?: string;
   ctaLabel?: string;
@@ -53,12 +56,28 @@ function normalizeHomepageCms(data: HomepageCmsState | undefined): HomepageCmsSt
 
 export function mapHeroSlidesForBanner(slides: HeroSlideRecord[]): StorefrontHeroSlide[] {
   return [...slides]
-    .filter((slide) => slide.enabled && slide.image)
+    .filter((slide) => {
+      if (!slide.enabled) return false;
+      if (slide.mediaType === "youtube") {
+        return Boolean(parseYouTubeId(slide.youtubeId));
+      }
+      return Boolean(slide.image);
+    })
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((slide) => {
       const title = [slide.title, slide.titleHighlight].filter(Boolean).join(" ").trim();
+      const youtubeId =
+        slide.mediaType === "youtube" ? parseYouTubeId(slide.youtubeId) ?? undefined : undefined;
+      const image = slide.image
+        ? resolveProductImage(slide.image)
+        : youtubeId
+          ? youtubeThumbnailUrl(youtubeId)
+          : "";
+
       return {
-        image: resolveProductImage(slide.image),
+        mediaType: slide.mediaType,
+        image,
+        youtubeId,
         title: title || undefined,
         subtitle: slide.subtitle || undefined,
         ctaLabel: slide.showCta ? slide.ctaLabel : undefined,
