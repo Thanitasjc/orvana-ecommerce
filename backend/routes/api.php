@@ -1,11 +1,13 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Admin\AdminCmsController;
 use App\Http\Controllers\Api\V1\Admin\AdminCategoryController;
 use App\Http\Controllers\Api\V1\Admin\AdminCustomerController;
 use App\Http\Controllers\Api\V1\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\V1\Admin\AdminOrderController;
 use App\Http\Controllers\Api\V1\Admin\AdminProductController;
 use App\Http\Controllers\Api\V1\CategoryController;
+use App\Http\Controllers\Api\V1\HomepageCmsController;
 use App\Http\Controllers\Api\V1\MemberAuthController;
 use App\Http\Controllers\Api\V1\MemberCheckoutController;
 use App\Http\Controllers\Api\V1\Pos\PosCheckoutController;
@@ -19,6 +21,7 @@ Route::prefix('v1')->group(function () {
   Route::get('categories', [CategoryController::class, 'index']);
   Route::get('products', [ProductController::class, 'index']);
   Route::get('products/{slug}', [ProductController::class, 'show']);
+  Route::get('cms/homepage', [HomepageCmsController::class, 'show']);
 
   Route::prefix('member')->group(function () {
     Route::post('register', [MemberAuthController::class, 'register']);
@@ -75,5 +78,7 @@ Route::prefix('v1')->group(function () {
       Route::get('products/{product}', [AdminProductController::class, 'show']);
       Route::patch('products/{product}', [AdminProductController::class, 'update']);
       Route::delete('products/{product}', [AdminProductController::class, 'destroy']);
+      Route::get('cms/homepage', [AdminCmsController::class, 'show']);
+      Route::patch('cms/homepage', [AdminCmsController::class, 'update']);
     });
 });

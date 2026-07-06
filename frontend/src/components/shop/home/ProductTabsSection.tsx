@@ -24,6 +24,7 @@ type ProductItem = {
 
 type ProductTabsSectionProps = {
   products?: ProductItem[];
+  sectionTitle?: string;
 };
 
 const defaultProducts: ProductItem[] = [
@@ -138,7 +139,10 @@ const actionIconStyle = {
   display: "block",
 } as const;
 
-export function ProductTabsSection({ products = defaultProducts }: ProductTabsSectionProps) {
+export function ProductTabsSection({
+  products = defaultProducts,
+  sectionTitle = "Customer Favorite Style Product",
+}: ProductTabsSectionProps) {
   const [activeTab, setActiveTab] = useState<ProductTab>("all");
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
   const { addItem } = useCart();
@@ -191,7 +195,7 @@ export function ProductTabsSection({ products = defaultProducts }: ProductTabsSe
                   />
                 </svg>
               </span>
-              <h3 className="tp-section-title-2">Customer Favorite Style Product</h3>
+              <h3 className="tp-section-title-2">{sectionTitle}</h3>
             </div>
           </div>
         </div>

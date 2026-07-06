@@ -172,6 +172,11 @@ cd backend && php artisan serve
 # Frontend
 cd frontend && npm run dev
 cd frontend && npm run build
+
+# Sync local catalog (products, categories) to Supabase production
+.\scripts\sync-to-supabase.ps1
+.\scripts\sync-to-supabase.ps1 -DryRun
+.\scripts\sync-to-supabase.ps1 -DeployFrontend
 ```
 
 ---

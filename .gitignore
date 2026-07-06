@@ -38,3 +38,5 @@ shofy-multipurpose-ecommerce-html-template-*/
 
 # Local deploy secrets
 deploy.env
+
+.vercel

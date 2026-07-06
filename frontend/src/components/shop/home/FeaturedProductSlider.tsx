@@ -14,6 +14,7 @@ type FeaturedItem = {
 
 type FeaturedProductSliderProps = {
   items?: FeaturedItem[];
+  sectionTitle?: string;
 };
 
 const defaultItems: FeaturedItem[] = [
@@ -59,7 +60,10 @@ const defaultItems: FeaturedItem[] = [
   },
 ];
 
-export function FeaturedProductSlider({ items = defaultItems }: FeaturedProductSliderProps) {
+export function FeaturedProductSlider({
+  items = defaultItems,
+  sectionTitle = "This Week's Featured",
+}: FeaturedProductSliderProps) {
   const [index, setIndex] = useState(0);
   const safeItems = useMemo(() => items.filter((item) => item.image), [items]);
   const orderedItems = useMemo(
@@ -97,7 +101,7 @@ export function FeaturedProductSlider({ items = defaultItems }: FeaturedProductS
                   />
                 </svg>
               </span>
-              <h3 className="tp-section-title-2">This Week's Featured</h3>
+              <h3 className="tp-section-title-2">{sectionTitle}</h3>
             </div>
           </div>
         </div>

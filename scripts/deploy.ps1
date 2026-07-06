@@ -20,7 +20,7 @@ Set-Location $Root
 function Load-DeployEnv {
     $envFile = Join-Path $Root "deploy.env"
     if (-not (Test-Path $envFile)) {
-        Write-Host "Missing deploy.env — copy from deploy.env.example" -ForegroundColor Yellow
+        Write-Host "Missing deploy.env - copy from deploy.env.example" -ForegroundColor Yellow
         return $false
     }
     Get-Content $envFile | ForEach-Object {

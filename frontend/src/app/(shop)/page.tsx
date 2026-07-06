@@ -8,6 +8,11 @@ import { TrendingArrivalsSection } from "@/components/shop/home/TrendingArrivals
 import { BlogNewsSection } from "@/components/shop/home/BlogNewsSection";
 import { BestSellerSection } from "@/components/shop/home/BestSellerSection";
 import {
+  fetchHomepageCms,
+  mapHeroSlidesForBanner,
+  pickCuratedProducts,
+} from "@/lib/api/cms";
+import {
   getProducts,
   resolveProductImage,
   defaultProductImageForId,
@@ -20,25 +25,45 @@ import {
 } from "@/lib/api/products";
 
 export default async function HomePage() {
-  const [allProducts, featuredProducts] = await Promise.all([
+  const [allProducts, featuredProducts, cms] = await Promise.all([
     getProducts(),
     getProducts({ featured: true }),
+    fetchHomepageCms(),
   ]);
 
+  const heroSlides = mapHeroSlidesForBanner(cms.heroSlides);
+  const curatedFavorite = pickCuratedProducts(allProducts, cms.customerFavorite);
+  const curatedFeatured = pickCuratedProducts(allProducts, cms.featuredProducts);
+
   const categoryItems = allProducts.length > 0 ? mapToCategorySliderItems(allProducts) : undefined;
-  const tabProducts = allProducts.length > 0 ? mapToProductTabsItems(allProducts) : undefined;
+  const tabProducts =
+    curatedFavorite && curatedFavorite.length > 0
+      ? mapToProductTabsItems(curatedFavorite)
+      : allProducts.length > 0
+        ? mapToProductTabsItems(allProducts)
+        : undefined;
+  const featuredSliderProducts =
+    curatedFeatured && curatedFeatured.length > 0 ? curatedFeatured : featuredProducts;
   const featuredSliderItems =
-    featuredProducts.length > 0 ? mapToFeaturedSliderItems(featuredProducts) : undefined;
+    featuredSliderProducts.length > 0 ? mapToFeaturedSliderItems(featuredSliderProducts) : undefined;
+  const gridFeaturedProducts =
+    curatedFeatured && curatedFeatured.length > 0 ? curatedFeatured : featuredProducts;
   const trendingItems = allProducts.length > 0 ? mapToTrendingItems(allProducts) : undefined;
   const bestSellerItems = allProducts.length > 0 ? mapToBestSellerItems(allProducts) : undefined;
 
   return (
     <>
-      <HeroBanner />
+      <HeroBanner slides={heroSlides} />
       <PromoBanners />
       <CategorySlider items={categoryItems} />
-      <ProductTabsSection products={tabProducts} />
-      <FeaturedProductSlider items={featuredSliderItems} />
+      <ProductTabsSection
+        products={tabProducts}
+        sectionTitle={cms.customerFavorite.enabled ? cms.customerFavorite.title : undefined}
+      />
+      <FeaturedProductSlider
+        items={featuredSliderItems}
+        sectionTitle={cms.featuredProducts.enabled ? cms.featuredProducts.title : undefined}
+      />
       <TrendingArrivalsSection items={trendingItems} />
       <BestSellerSection items={bestSellerItems} />
       <BlogNewsSection />
@@ -49,17 +74,19 @@ export default async function HomePage() {
             <div className="col-xl-12">
               <div className="tp-section-title-wrapper-2 text-center mb-50">
                 <span className="tp-section-title-pre-2">สินค้าแนะนำ</span>
-                <h3 className="tp-section-title-2">Featured Products</h3>
+                <h3 className="tp-section-title-2">
+                  {cms.featuredProducts.enabled ? cms.featuredProducts.title : "Featured Products"}
+                </h3>
               </div>
             </div>
           </div>
           <div className="row">
-            {featuredProducts.length === 0 ? (
+            {gridFeaturedProducts.length === 0 ? (
               <div className="col-12 text-center">
                 <p>กำลังโหลดสินค้า — ตรวจสอบว่า Laravel API ทำงานที่ port 8000</p>
               </div>
             ) : (
-              featuredProducts.map((product) => (
+              gridFeaturedProducts.map((product) => (
                 <div key={product.id} className="col-xl-3 col-lg-3 col-md-4 col-sm-6">
                   <div className="tp-product-item-2 mb-40">
                     <div className="tp-product-thumb-2 p-relative fix">

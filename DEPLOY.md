@@ -1,5 +1,22 @@
 # Deploy — Vercel + Render + Supabase
 
+## Quick deploy (local script)
+
+```powershell
+# 1. Copy secrets template
+copy deploy.env.example deploy.env
+# Edit deploy.env — add DATABASE_URL, passwords, tokens
+
+# 2. Step by step
+.\scripts\deploy.ps1 -Step login      # Supabase CLI token (run in your terminal)
+.\scripts\deploy.ps1 -Step supabase   # Create project (optional, or use Dashboard)
+.\scripts\deploy.ps1 -Step migrate    # Run migrations on Supabase DB
+.\scripts\deploy.ps1 -Step render       # Opens Render Blueprint page
+.\scripts\deploy.ps1 -Step vercel       # Deploy frontend via Vercel CLI
+```
+
+---
+
 ## 1) Supabase (PostgreSQL)
 
 1. สร้างโปรเจกต์ที่ [Supabase](https://supabase.com)
