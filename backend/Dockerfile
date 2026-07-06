@@ -24,5 +24,7 @@ RUN mkdir -p storage/framework/{cache,sessions,views} storage/logs bootstrap/cac
 COPY docker/start.sh /start.sh
 RUN chmod +x /start.sh
 
+ENV BUILD_ID=2026-07-06-detail-content-unlimited
+
 EXPOSE 10000
 CMD ["/start.sh"]

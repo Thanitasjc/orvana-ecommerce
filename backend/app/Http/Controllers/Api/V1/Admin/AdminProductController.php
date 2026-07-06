@@ -158,7 +158,7 @@ class AdminProductController extends Controller
             'name' => [$product ? 'sometimes' : 'required', 'string', 'max:255'],
             'slug' => $slugRule,
             'description' => ['nullable', 'string', 'max:5000'],
-            'detail_content' => ['nullable', 'string'],
+            'detail_content' => ['nullable', 'string', 'max:1000000'],
             'price' => [$product ? 'sometimes' : 'required', 'integer', 'min:0'],
             'cost' => ['nullable', 'integer', 'min:0'],
             'image' => ['nullable', 'string', 'max:500'],

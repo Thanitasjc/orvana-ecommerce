@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\CouponController;
 use App\Http\Controllers\Api\V1\BlogController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\HeaderCmsController;
+use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\HomepageCmsController;
 use App\Http\Controllers\Api\V1\MemberAuthController;
 use App\Http\Controllers\Api\V1\MemberCheckoutController;
@@ -24,6 +25,7 @@ use App\Http\Controllers\Api\V1\StaffAuthController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
+  Route::get('health', [HealthController::class, 'show']);
   Route::get('categories', [CategoryController::class, 'index']);
   Route::get('products', [ProductController::class, 'index']);
   Route::get('products/{slug}', [ProductController::class, 'show']);
