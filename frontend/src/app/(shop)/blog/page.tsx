@@ -1,10 +1,13 @@
 import Link from "next/link";
-import { BlogBreadcrumb, BlogListItem } from "@/components/shop/blog/BlogListItem";
+import { BlogBreadcrumb } from "@/components/shop/blog/BlogListItem";
+import { BlogListing } from "@/components/shop/blog/BlogListing";
 import { fetchBlogs } from "@/lib/api/blogs";
 
 type BlogListPageProps = {
   searchParams: Promise<{ page?: string; search?: string; tag?: string }>;
 };
+
+const PER_PAGE = 6;
 
 export default async function BlogListPage({ searchParams }: BlogListPageProps) {
   const params = await searchParams;
@@ -12,9 +15,9 @@ export default async function BlogListPage({ searchParams }: BlogListPageProps) 
   const search = params.search?.trim() || undefined;
   const tag = params.tag?.trim() || undefined;
 
-  const response = await fetchBlogs({ page, search, tag, per_page: 6 });
+  const response = await fetchBlogs({ page, search, tag, per_page: PER_PAGE });
   const posts = response.data;
-  const { current_page, last_page, total } = response.meta;
+  const { current_page, last_page, per_page, total } = response.meta;
 
   return (
     <>
@@ -29,8 +32,7 @@ export default async function BlogListPage({ searchParams }: BlogListPageProps) 
                 <h3 className="tp-section-title-2">Latest News &amp; Articles</h3>
                 {tag ? (
                   <p className="mt-2 text-muted">
-                    แสดงบทความแท็ก <strong>{tag}</strong> —{" "}
-                    <Link href="/blog">ดูทั้งหมด</Link>
+                    แสดงบทความแท็ก <strong>{tag}</strong> — <Link href="/blog">ดูทั้งหมด</Link>
                   </p>
                 ) : null}
               </div>
@@ -39,43 +41,17 @@ export default async function BlogListPage({ searchParams }: BlogListPageProps) 
 
           <div className="row">
             <div className="col-xl-12">
-              {posts.length === 0 ? (
-                <div className="rounded-xl border border-dashed p-10 text-center text-muted">
-                  ยังไม่มีบทความ
-                </div>
-              ) : (
-                posts.map((post) => <BlogListItem key={post.id} post={post} />)
-              )}
+              <BlogListing
+                posts={posts}
+                currentPage={current_page}
+                lastPage={last_page}
+                perPage={per_page}
+                total={total}
+                search={search}
+                tag={tag}
+              />
             </div>
           </div>
-
-          {last_page > 1 ? (
-            <div className="row">
-              <div className="col-xl-12">
-                <div className="tp-pagination mt-20 d-flex justify-content-center gap-3">
-                  {current_page > 1 ? (
-                    <Link
-                      href={`/blog?page=${current_page - 1}${search ? `&search=${encodeURIComponent(search)}` : ""}${tag ? `&tag=${encodeURIComponent(tag)}` : ""}`}
-                      className="tp-btn tp-btn-border tp-btn-border-sm"
-                    >
-                      Previous
-                    </Link>
-                  ) : null}
-                  <span className="align-self-center text-muted">
-                    หน้า {current_page} / {last_page} ({total} บทความ)
-                  </span>
-                  {current_page < last_page ? (
-                    <Link
-                      href={`/blog?page=${current_page + 1}${search ? `&search=${encodeURIComponent(search)}` : ""}${tag ? `&tag=${encodeURIComponent(tag)}` : ""}`}
-                      className="tp-btn tp-btn-border tp-btn-border-sm"
-                    >
-                      Next
-                    </Link>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          ) : null}
         </div>
       </section>
     </>
