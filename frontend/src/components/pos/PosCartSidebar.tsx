@@ -1,8 +1,9 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { getPosSessionId } from "@/lib/pos/session";
 import type { PosCustomer } from "@/lib/api/pos";
+import { PosCouponScannerModal } from "@/components/pos/PosCouponScannerModal";
 import { PosMemberSelector } from "@/components/pos/PosMemberSelector";
 import { PosTotalsBreakdown } from "@/components/pos/PosTotalsBreakdown";
 import type { PosCartItem, PosCouponApplyOptions } from "@/components/pos/usePosCart";
@@ -45,16 +46,39 @@ export function PosCartSidebar({
   onCheckout,
 }: PosCartSidebarProps) {
   const [couponInput, setCouponInput] = useState("");
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const couponInputRef = useRef<HTMLInputElement>(null);
+
+  const couponApplyOptions = {
+    customerId: selectedCustomer?.id,
+    posSessionId: getPosSessionId(),
+  };
+
+  const submitCoupon = useCallback(
+    async (rawCode: string) => {
+      const applied = await onApplyCoupon(rawCode, couponApplyOptions);
+      if (applied) {
+        setCouponInput("");
+      }
+      return applied;
+    },
+    [onApplyCoupon, selectedCustomer?.id],
+  );
+
+  useEffect(() => {
+    if (items.length > 0 && !appliedCoupon && couponInputRef.current) {
+      couponInputRef.current.focus();
+    }
+  }, [appliedCoupon, items.length]);
 
   async function handleCouponSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const applied = await onApplyCoupon(couponInput, {
-      customerId: selectedCustomer?.id,
-      posSessionId: getPosSessionId(),
-    });
-    if (applied) {
-      setCouponInput("");
-    }
+    await submitCoupon(couponInput);
+  }
+
+  async function handleScannedCode(code: string) {
+    setCouponInput(code);
+    await submitCoupon(code);
   }
 
   return (
@@ -148,21 +172,37 @@ export function PosCartSidebar({
               </button>
             </div>
           ) : (
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={couponInput}
-                onChange={(event) => setCouponInput(event.target.value.toUpperCase())}
-                placeholder="SAVE10"
-                className="flex-1 rounded-md border border-slate-200 px-3 py-2 text-sm uppercase focus:border-emerald-500 focus:outline-none"
-              />
-              <button
-                type="submit"
-                disabled={couponLoading}
-                className="rounded-md bg-slate-800 px-3 py-2 text-xs font-bold text-white hover:bg-slate-900 disabled:opacity-50"
-              >
-                {couponLoading ? "..." : "ใช้"}
-              </button>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <input
+                  ref={couponInputRef}
+                  type="text"
+                  value={couponInput}
+                  onChange={(event) => setCouponInput(event.target.value.toUpperCase())}
+                  placeholder="SAVE10"
+                  autoComplete="off"
+                  className="flex-1 rounded-md border border-slate-200 px-3 py-2 text-sm uppercase focus:border-emerald-500 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setScannerOpen(true)}
+                  disabled={couponLoading}
+                  title="สแกน QR / บาร์โค้ดจากกล้อง"
+                  className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                >
+                  📷
+                </button>
+                <button
+                  type="submit"
+                  disabled={couponLoading}
+                  className="rounded-md bg-slate-800 px-3 py-2 text-xs font-bold text-white hover:bg-slate-900 disabled:opacity-50"
+                >
+                  {couponLoading ? "..." : "ใช้"}
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400">
+                ปืนยิงบาร์โค้ด: โฟกัสช่องนี้แล้วยิง — ใช้คูปองอัตโนมัติเมื่อกด Enter
+              </p>
             </div>
           )}
           {couponError ? <p className="text-xs text-rose-600">{couponError}</p> : null}
@@ -198,6 +238,12 @@ export function PosCartSidebar({
           ดำเนินการชำระเงิน
         </button>
       </div>
+
+      <PosCouponScannerModal
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onScan={(code) => void handleScannedCode(code)}
+      />
     </div>
   );
 }
