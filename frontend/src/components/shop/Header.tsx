@@ -9,12 +9,15 @@ import { useCompare } from "@/components/shop/compare/CompareProvider";
 import { useWishlist } from "@/components/shop/wishlist/WishlistProvider";
 import { formatBaht } from "@/lib/pricing/vat";
 import { apiFetch } from "@/lib/api/client";
-import { fetchHeaderCms } from "@/lib/api/headerCms";
 import { defaultHeaderCms, getVisibleMenuItems, type HeaderCmsState } from "@/lib/cms/headerCms";
 import { resolveProductImage } from "@/lib/api/products";
 import { MEMBER_TOKEN_KEY, deleteCookie, getCookie, setCookie } from "@/lib/auth/cookies";
 
-export function Header() {
+type HeaderProps = {
+  initialCms?: HeaderCmsState;
+};
+
+export function Header({ initialCms = defaultHeaderCms }: HeaderProps) {
   const router = useRouter();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -23,7 +26,7 @@ export function Header() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [memberName, setMemberName] = useState<string | null>(null);
-  const [headerCms, setHeaderCms] = useState<HeaderCmsState>(defaultHeaderCms);
+  const [headerCms] = useState<HeaderCmsState>(initialCms);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
   const { cartCount, items: cartItems, subtotal, removeItem } = useCart();
   const { compareCount } = useCompare();
@@ -46,10 +49,6 @@ export function Header() {
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  useEffect(() => {
-    void fetchHeaderCms().then(setHeaderCms);
   }, []);
 
   useEffect(() => {
