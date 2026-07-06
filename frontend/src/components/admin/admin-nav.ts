@@ -8,6 +8,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { href: "/admin", label: "แดชบอร์ด", icon: "📊" },
   { href: "/admin/products", label: "สินค้า", icon: "👕" },
   { href: "/admin/categories", label: "หมวดหมู่", icon: "🏷️" },
+  { href: "/admin/coupons", label: "คูปอง", icon: "🎟️" },
   { href: "/admin/orders", label: "ออเดอร์", icon: "🧾" },
   { href: "/admin/members", label: "สมาชิก (CRM)", icon: "👥" },
   { href: "/admin/cms", label: "CMS หน้าร้าน", icon: "🖥️" },
@@ -16,6 +17,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
 export const ADMIN_QUICK_LINKS = [
   { href: "/admin/products", label: "จัดการสินค้า" },
   { href: "/admin/categories", label: "จัดการหมวดหมู่" },
+  { href: "/admin/coupons", label: "จัดการคูปอง" },
   { href: "/admin/orders", label: "ดูออเดอร์ทั้งหมด" },
   { href: "/admin/members", label: "จัดการสมาชิก" },
   { href: "/admin/cms", label: "แก้ไขหน้าแรก" },

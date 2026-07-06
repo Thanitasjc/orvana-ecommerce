@@ -2,15 +2,40 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { useCart } from "@/components/shop/cart/CartProvider";
 import { ShopVatSummary } from "@/components/shop/ShopVatSummary";
 import { calculateShopTotals } from "@/lib/shop/orderTotals";
 import { formatBaht } from "@/lib/pricing/vat";
 
 export default function CartPage() {
-  const { items, subtotal, removeItem, updateQuantity } = useCart();
-  const totals = useMemo(() => calculateShopTotals(subtotal), [subtotal]);
+  const {
+    items,
+    subtotal,
+    removeItem,
+    updateQuantity,
+    appliedCoupon,
+    couponError,
+    couponLoading,
+    applyCoupon,
+    removeCoupon,
+  } = useCart();
+  const [couponInput, setCouponInput] = useState("");
+  const totals = useMemo(
+    () =>
+      calculateShopTotals(
+        subtotal,
+        appliedCoupon?.discount ?? 0,
+        undefined,
+        appliedCoupon?.shipping_discount ?? 0,
+      ),
+    [subtotal, appliedCoupon?.discount, appliedCoupon?.shipping_discount],
+  );
+
+  async function handleCouponSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await applyCoupon(couponInput);
+  }
 
   return (
     <main>
@@ -67,7 +92,7 @@ export default function CartPage() {
                             <Link href={item.href}>{item.title}</Link>
                           </td>
                           <td className="tp-cart-price">
-                            <span>${item.price.toFixed(2)}</span>
+                            <span>฿{formatBaht(item.price)}</span>
                           </td>
                           <td className="tp-cart-quantity">
                             <div className="tp-product-quantity mt-10 mb-10">
@@ -111,13 +136,34 @@ export default function CartPage() {
                 <div className="row align-items-end">
                   <div className="col-xl-6 col-md-8">
                     <div className="tp-cart-coupon">
-                      <form>
+                      <form onSubmit={(event) => void handleCouponSubmit(event)}>
                         <div className="tp-cart-coupon-input-box">
                           <label>Coupon Code:</label>
-                          <div className="tp-cart-coupon-input d-flex align-items-center">
-                            <input type="text" placeholder="Enter Coupon Code" />
-                            <button type="submit">Apply</button>
-                          </div>
+                          {appliedCoupon ? (
+                            <div className="d-flex align-items-center gap-2 flex-wrap">
+                              <span className="text-success">
+                                ✓ {appliedCoupon.code} — {appliedCoupon.name}
+                                {appliedCoupon.discount > 0 ? ` (−฿${formatBaht(appliedCoupon.discount)})` : ""}
+                                {appliedCoupon.free_shipping ? " + ส่งฟรี" : ""}
+                              </span>
+                              <button type="button" onClick={removeCoupon} className="tp-cart-action-btn">
+                                ลบคูปอง
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="tp-cart-coupon-input d-flex align-items-center">
+                              <input
+                                type="text"
+                                placeholder="Enter Coupon Code"
+                                value={couponInput}
+                                onChange={(event) => setCouponInput(event.target.value.toUpperCase())}
+                              />
+                              <button type="submit" disabled={couponLoading}>
+                                {couponLoading ? "..." : "Apply"}
+                              </button>
+                            </div>
+                          )}
+                          {couponError ? <p className="text-danger mt-2 mb-0">{couponError}</p> : null}
                         </div>
                       </form>
                     </div>
@@ -139,6 +185,18 @@ export default function CartPage() {
                   <span className="tp-cart-checkout-top-title">Subtotal (รวม VAT)</span>
                   <span className="tp-cart-checkout-top-price">฿{formatBaht(totals.subtotal)}</span>
                 </div>
+                {totals.discount > 0 ? (
+                  <div className="tp-cart-checkout-top d-flex align-items-center justify-content-between mb-10">
+                    <span className="tp-cart-checkout-top-title">ส่วนลด ({appliedCoupon?.code})</span>
+                    <span className="tp-cart-checkout-top-price text-success">−฿{formatBaht(totals.discount)}</span>
+                  </div>
+                ) : null}
+                {totals.shippingDiscount > 0 ? (
+                  <div className="tp-cart-checkout-top d-flex align-items-center justify-content-between mb-10">
+                    <span className="tp-cart-checkout-top-title">ส่งฟรี (คูปอง)</span>
+                    <span className="tp-cart-checkout-top-price text-success">−฿{formatBaht(totals.shippingDiscount)}</span>
+                  </div>
+                ) : null}
                 <div className="tp-cart-checkout-shipping">
                   <h4 className="tp-cart-checkout-shipping-title">Shipping</h4>
                   <div className="tp-cart-checkout-shipping-option-wrapper">

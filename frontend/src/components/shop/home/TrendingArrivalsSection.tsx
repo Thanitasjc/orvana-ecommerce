@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useCart } from "@/components/shop/cart/CartProvider";
+import { parseDisplayPrice, useCompare } from "@/components/shop/compare/CompareProvider";
+import { useWishlist } from "@/components/shop/wishlist/WishlistProvider";
 import { QuickViewModal, type QuickViewProduct } from "@/components/shop/home/QuickViewModal";
 
 type TrendingItem = {
@@ -81,8 +83,10 @@ export function TrendingArrivalsSection({
   const [page, setPage] = useState(0);
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
   const { addItem } = useCart();
+  const { addItem: addCompareItem } = useCompare();
+  const { addItem: addWishlistItem } = useWishlist();
   const pageCount = Math.max(1, items.length);
-  const parsePrice = (value: string) => Number(value.replace(/[^0-9.]/g, "")) || 0;
+  const parsePrice = (value: string) => parseDisplayPrice(value);
   const makeCartId = (value: string) =>
     Math.abs(
       Array.from(value).reduce((acc, ch) => {
@@ -194,6 +198,15 @@ export function TrendingArrivalsSection({
                                   className="tp-product-action-btn-2 tp-product-add-to-wishlist-btn"
                                   aria-label="Add to wishlist"
                                   style={actionBtnStyle}
+                                  onClick={() =>
+                                    addWishlistItem({
+                                      id: item.productId ?? makeCartId(`trend-${item.id}`),
+                                      title: item.title,
+                                      href: item.href,
+                                      image: item.image,
+                                      price: item.priceValue ?? parsePrice(item.price),
+                                    })
+                                  }
                                 >
                                   <svg style={actionIconStyle} width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path fillRule="evenodd" clipRule="evenodd" d="M1.60355 7.98635C2.83622 11.8048 7.7062 14.8923 9.0004 15.6565C10.299 14.8844 15.2042 11.7628 16.3973 7.98985C17.1806 5.55102 16.4535 2.46177 13.5644 1.53473C12.1647 1.08741 10.532 1.35966 9.40484 2.22804C9.16921 2.40837 8.84214 2.41187 8.60476 2.23329C7.41078 1.33952 5.85105 1.07778 4.42936 1.53473C1.54465 2.4609 0.820172 5.55014 1.60355 7.98635Z" fill="currentColor" />
@@ -207,6 +220,16 @@ export function TrendingArrivalsSection({
                                   className="tp-product-action-btn-2 tp-product-add-to-compare-btn"
                                   aria-label="Add to compare"
                                   style={actionBtnStyle}
+                                  onClick={() =>
+                                    addCompareItem({
+                                      id: item.productId ?? makeCartId(`trend-${item.id}`),
+                                      title: item.title,
+                                      href: item.href,
+                                      image: item.image,
+                                      price: item.priceValue ?? parsePrice(item.price),
+                                      oldPrice: item.oldPrice ? parsePrice(item.oldPrice) : undefined,
+                                    })
+                                  }
                                 >
                                   <svg style={actionIconStyle} width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M11.4144 6.16828L14 3.58412L11.4144 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />

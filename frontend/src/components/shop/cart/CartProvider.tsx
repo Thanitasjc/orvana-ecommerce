@@ -1,7 +1,11 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
+import { buildCheckoutItems } from "@/lib/api/checkout";
+import { validateCouponCode, type ValidatedCoupon } from "@/lib/api/coupons";
+import { getShopShippingFee } from "@/lib/shop/orderTotals";
+import type { CouponDiscountType } from "@/lib/coupons/constants";
 
 export type CartItem = {
   id: number;
@@ -13,6 +17,28 @@ export type CartItem = {
   quantity: number;
 };
 
+export type AppliedCoupon = {
+  code: string;
+  name: string;
+  type: CouponDiscountType;
+  value: number;
+  discount: number;
+  shipping_discount: number;
+  free_shipping: boolean;
+};
+
+function toAppliedCoupon(data: ValidatedCoupon): AppliedCoupon {
+  return {
+    code: data.code,
+    name: data.name,
+    type: data.type,
+    value: data.value,
+    discount: data.discount,
+    shipping_discount: data.shipping_discount,
+    free_shipping: data.free_shipping,
+  };
+}
+
 type CartContextValue = {
   items: CartItem[];
   setItems: Dispatch<SetStateAction<CartItem[]>>;
@@ -21,9 +47,15 @@ type CartContextValue = {
   updateQuantity: (id: number, quantity: number) => void;
   subtotal: number;
   cartCount: number;
+  appliedCoupon: AppliedCoupon | null;
+  couponError: string | null;
+  couponLoading: boolean;
+  applyCoupon: (code: string) => Promise<void>;
+  removeCoupon: () => void;
 };
 
 const CART_STORAGE_KEY = "aesthete_shop_cart";
+const COUPON_STORAGE_KEY = "aesthete_shop_coupon";
 
 const defaultItems: CartItem[] = [];
 
@@ -31,6 +63,9 @@ const CartContext = createContext<CartContextValue | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>(defaultItems);
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
 
   useEffect(() => {
     try {
@@ -46,14 +81,108 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(COUPON_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as AppliedCoupon;
+      if (parsed?.code) {
+        setAppliedCoupon(parsed);
+      }
+    } catch {
+      // Ignore malformed localStorage content.
+    }
+  }, []);
+
+  useEffect(() => {
     window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
   }, [items]);
+
+  useEffect(() => {
+    if (appliedCoupon) {
+      window.localStorage.setItem(COUPON_STORAGE_KEY, JSON.stringify(appliedCoupon));
+    } else {
+      window.localStorage.removeItem(COUPON_STORAGE_KEY);
+    }
+  }, [appliedCoupon]);
 
   const subtotal = useMemo(
     () => items.reduce((sum, item) => sum + item.price * item.quantity, 0),
     [items],
   );
   const cartCount = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
+
+  const removeCoupon = useCallback(() => {
+    setAppliedCoupon(null);
+    setCouponError(null);
+  }, []);
+
+  const applyCoupon = useCallback(
+    async (code: string) => {
+      const trimmed = code.trim();
+      if (!trimmed) {
+        setCouponError("กรุณาระบุรหัสคูปอง");
+        return;
+      }
+
+      if (items.length === 0) {
+        setCouponError("ตะกร้าว่าง — ไม่สามารถใช้คูปองได้");
+        return;
+      }
+
+      setCouponLoading(true);
+      setCouponError(null);
+
+      try {
+        const checkoutItems = await buildCheckoutItems(items);
+        const shippingFee = getShopShippingFee(subtotal);
+        const response = await validateCouponCode(trimmed, "online", checkoutItems, { shippingFee });
+        setAppliedCoupon(toAppliedCoupon(response.data));
+      } catch (err: unknown) {
+        setAppliedCoupon(null);
+        if (err && typeof err === "object") {
+          const apiError = err as { message?: string; errors?: Record<string, string[]> };
+          const fieldError = apiError.errors?.coupon_code?.[0] ?? apiError.errors?.code?.[0];
+          setCouponError(fieldError ?? apiError.message ?? "คูปองไม่ถูกต้อง");
+        } else {
+          setCouponError("คูปองไม่ถูกต้อง");
+        }
+      } finally {
+        setCouponLoading(false);
+      }
+    },
+    [items, subtotal],
+  );
+
+  useEffect(() => {
+    if (!appliedCoupon || items.length === 0) {
+      if (items.length === 0 && appliedCoupon) {
+        removeCoupon();
+      }
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const checkoutItems = await buildCheckoutItems(items);
+        const shippingFee = getShopShippingFee(subtotal);
+        const response = await validateCouponCode(appliedCoupon.code, "online", checkoutItems, { shippingFee });
+        if (cancelled) return;
+        setAppliedCoupon(toAppliedCoupon(response.data));
+        setCouponError(null);
+      } catch {
+        if (!cancelled) {
+          removeCoupon();
+          setCouponError("คูปองไม่สามารถใช้กับตะกร้าปัจจุบันได้");
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [items, appliedCoupon?.code, removeCoupon, subtotal]);
 
   const value = useMemo<CartContextValue>(
     () => ({
@@ -78,8 +207,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
       },
       subtotal,
       cartCount,
+      appliedCoupon,
+      couponError,
+      couponLoading,
+      applyCoupon,
+      removeCoupon,
     }),
-    [cartCount, items, subtotal],
+    [appliedCoupon, applyCoupon, cartCount, couponError, couponLoading, items, removeCoupon, subtotal],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

@@ -13,7 +13,11 @@ class Order extends Model
         'channel',
         'customer_id',
         'staff_id',
+        'coupon_id',
+        'coupon_code',
         'discount',
+        'shipping_fee',
+        'shipping_discount',
         'total',
         'profit',
         'payment_method',
@@ -34,5 +38,10 @@ class Order extends Model
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function coupon(): BelongsTo
+    {
+        return $this->belongsTo(Coupon::class);
     }
 }

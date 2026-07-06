@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useCart } from "@/components/shop/cart/CartProvider";
+import { parseDisplayPrice, useCompare } from "@/components/shop/compare/CompareProvider";
+import { useWishlist } from "@/components/shop/wishlist/WishlistProvider";
 import { QuickViewModal, type QuickViewProduct } from "@/components/shop/home/QuickViewModal";
 
 type SellerItem = {
@@ -73,8 +75,10 @@ const actionIconStyle = {
 
 export function BestSellerSection({ items = defaultItems, shopHref = "/shop" }: BestSellerSectionProps) {
   const { addItem } = useCart();
+  const { addItem: addCompareItem } = useCompare();
+  const { addItem: addWishlistItem } = useWishlist();
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
-  const parsePrice = (value: string) => Number(value.replace(/[^0-9.]/g, "")) || 0;
+  const parsePrice = (value: string) => parseDisplayPrice(value);
   const makeCartId = (value: string) =>
     Math.abs(
       Array.from(value).reduce((acc, ch) => {
@@ -199,7 +203,20 @@ export function BestSellerSection({ items = defaultItems, shopHref = "/shop" }: 
                         </svg>
                         <span className="tp-product-tooltip tp-product-tooltip-right">Quick View</span>
                       </button>
-                      <button type="button" className="tp-product-action-btn-2 tp-product-add-to-wishlist-btn" style={actionBtnStyle}>
+                      <button
+                        type="button"
+                        className="tp-product-action-btn-2 tp-product-add-to-wishlist-btn"
+                        style={actionBtnStyle}
+                        onClick={() =>
+                          addWishlistItem({
+                            id: item.productId ?? makeCartId(`best-${item.id}`),
+                            title: item.title,
+                            href: item.href,
+                            image: item.image,
+                            price: item.priceValue ?? parsePrice(item.price),
+                          })
+                        }
+                      >
                         <svg style={actionIconStyle} width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path
                             d="M9 15.6L7.7 14.4C3.4 10.5 1 8.3 1 5.6C1 3.4 2.8 1.6 5 1.6C6.3 1.6 7.6 2.2 8.4 3.2C9.2 2.2 10.5 1.6 11.8 1.6C14 1.6 15.8 3.4 15.8 5.6C15.8 8.3 13.4 10.5 9.1 14.4L9 15.6Z"
@@ -211,7 +228,21 @@ export function BestSellerSection({ items = defaultItems, shopHref = "/shop" }: 
                         </svg>
                         <span className="tp-product-tooltip tp-product-tooltip-right">Add To Wishlist</span>
                       </button>
-                      <button type="button" className="tp-product-action-btn-2 tp-product-add-to-compare-btn" style={actionBtnStyle}>
+                      <button
+                        type="button"
+                        className="tp-product-action-btn-2 tp-product-add-to-compare-btn"
+                        style={actionBtnStyle}
+                        onClick={() =>
+                          addCompareItem({
+                            id: item.productId ?? makeCartId(`best-${item.id}`),
+                            title: item.title,
+                            href: item.href,
+                            image: item.image,
+                            price: item.priceValue ?? parsePrice(item.price),
+                            oldPrice: item.oldPrice ? parsePrice(item.oldPrice) : undefined,
+                          })
+                        }
+                      >
                         <svg style={actionIconStyle} width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path
                             d="M11.4144 6.16828L14 3.58412L11.4144 1"

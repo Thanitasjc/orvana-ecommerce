@@ -1,12 +1,16 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Admin\AdminHeaderCmsController;
 use App\Http\Controllers\Api\V1\Admin\AdminCmsController;
+use App\Http\Controllers\Api\V1\Admin\AdminCouponController;
 use App\Http\Controllers\Api\V1\Admin\AdminCategoryController;
 use App\Http\Controllers\Api\V1\Admin\AdminCustomerController;
 use App\Http\Controllers\Api\V1\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\V1\Admin\AdminOrderController;
 use App\Http\Controllers\Api\V1\Admin\AdminProductController;
+use App\Http\Controllers\Api\V1\CouponController;
 use App\Http\Controllers\Api\V1\CategoryController;
+use App\Http\Controllers\Api\V1\HeaderCmsController;
 use App\Http\Controllers\Api\V1\HomepageCmsController;
 use App\Http\Controllers\Api\V1\MemberAuthController;
 use App\Http\Controllers\Api\V1\MemberCheckoutController;
@@ -22,6 +26,9 @@ Route::prefix('v1')->group(function () {
   Route::get('products', [ProductController::class, 'index']);
   Route::get('products/{slug}', [ProductController::class, 'show']);
   Route::get('cms/homepage', [HomepageCmsController::class, 'show']);
+  Route::get('cms/header', [HeaderCmsController::class, 'show']);
+  Route::get('coupons', [CouponController::class, 'index']);
+  Route::post('coupons/validate', [CouponController::class, 'validateCode']);
 
   Route::prefix('member')->group(function () {
     Route::post('register', [MemberAuthController::class, 'register']);
@@ -80,5 +87,14 @@ Route::prefix('v1')->group(function () {
       Route::delete('products/{product}', [AdminProductController::class, 'destroy']);
       Route::get('cms/homepage', [AdminCmsController::class, 'show']);
       Route::patch('cms/homepage', [AdminCmsController::class, 'update']);
+      Route::get('cms/header', [AdminHeaderCmsController::class, 'show']);
+      Route::patch('cms/header', [AdminHeaderCmsController::class, 'update']);
+      Route::get('coupons/reports/summary', [AdminCouponController::class, 'reportSummary']);
+      Route::get('coupons/{coupon}/usages', [AdminCouponController::class, 'usages']);
+      Route::get('coupons/{coupon}/codes', [AdminCouponController::class, 'codes']);
+      Route::get('coupons', [AdminCouponController::class, 'index']);
+      Route::post('coupons', [AdminCouponController::class, 'store']);
+      Route::patch('coupons/{coupon}', [AdminCouponController::class, 'update']);
+      Route::delete('coupons/{coupon}', [AdminCouponController::class, 'destroy']);
     });
 });

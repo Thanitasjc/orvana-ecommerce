@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useCart } from "@/components/shop/cart/CartProvider";
+import { parseDisplayPrice, useCompare } from "@/components/shop/compare/CompareProvider";
+import { useWishlist } from "@/components/shop/wishlist/WishlistProvider";
 import { QuickViewModal, type QuickViewProduct } from "@/components/shop/home/QuickViewModal";
 
 type ProductTab = "all" | "shoes" | "clothing" | "bags";
@@ -146,8 +148,10 @@ export function ProductTabsSection({
   const [activeTab, setActiveTab] = useState<ProductTab>("all");
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
   const { addItem } = useCart();
+  const { addItem: addCompareItem } = useCompare();
+  const { addItem: addWishlistItem } = useWishlist();
 
-  const parsePrice = (value: string) => Number(value.replace(/[^0-9.]/g, "")) || 0;
+  const parsePrice = (value: string) => parseDisplayPrice(value);
   const makeCartId = (value: string) =>
     Math.abs(
       Array.from(value).reduce((acc, ch) => {
@@ -324,6 +328,15 @@ export function ProductTabsSection({
                         className="tp-product-action-btn-2 tp-product-add-to-wishlist-btn"
                         style={actionBtnStyle}
                         aria-label="Add to wishlist"
+                        onClick={() =>
+                          addWishlistItem({
+                            id: product.productId ?? makeCartId(`tabs-${product.id}`),
+                            title: product.title,
+                            href: product.href,
+                            image: product.image,
+                            price: product.priceValue ?? parsePrice(product.price),
+                          })
+                        }
                       >
                         <svg style={actionIconStyle} width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path
@@ -341,6 +354,17 @@ export function ProductTabsSection({
                         className="tp-product-action-btn-2 tp-product-add-to-compare-btn"
                         style={actionBtnStyle}
                         aria-label="Add to compare"
+                        onClick={() =>
+                          addCompareItem({
+                            id: product.productId ?? makeCartId(`tabs-${product.id}`),
+                            title: product.title,
+                            href: product.href,
+                            image: product.image,
+                            price: product.priceValue ?? parsePrice(product.price),
+                            oldPrice: product.oldPrice ? parsePrice(product.oldPrice) : undefined,
+                            rating: product.rating,
+                          })
+                        }
                       >
                         <svg style={actionIconStyle} width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path

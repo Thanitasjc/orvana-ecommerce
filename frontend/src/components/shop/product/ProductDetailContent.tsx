@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useCart } from "@/components/shop/cart/CartProvider";
+import { useCompare } from "@/components/shop/compare/CompareProvider";
+import { useWishlist } from "@/components/shop/wishlist/WishlistProvider";
 import { ProductDetailGallery } from "@/components/shop/product/ProductDetailGallery";
+import { ProductDetailSmActions } from "@/components/shop/product/ProductDetailSmActions";
 import { ProductDetailTabs } from "@/components/shop/product/ProductDetailTabs";
 import type { ProductGallerySlide } from "@/lib/api/products";
 import { colorNameToHex } from "@/lib/shop/productColors";
@@ -49,6 +52,8 @@ const toPriceNumber = (value: number | string) => {
 
 export function ProductDetailContent({ product }: { product: ProductDetailData }) {
   const { addItem } = useCart();
+  const { addItem: addCompareItem } = useCompare();
+  const { addItem: addWishlistItem } = useWishlist();
   const {
     quantity,
     setQuantity,
@@ -194,17 +199,28 @@ export function ProductDetailContent({ product }: { product: ProductDetailData }
                   </div>
                 </div>
 
-                <div className="tp-product-details-action-sm">
-                  <Link href="/shop" className="tp-product-details-action-sm-btn">
-                    Back to Shop
-                  </Link>
-                  <button type="button" className="tp-product-details-action-sm-btn">
-                    Add Wishlist
-                  </button>
-                  <button type="button" className="tp-product-details-action-sm-btn">
-                    Compare
-                  </button>
-                </div>
+                <ProductDetailSmActions
+                  onCompare={() =>
+                    addCompareItem({
+                      id: product.id,
+                      title: product.name,
+                      href: `/products/${product.slug}`,
+                      image: displayImage,
+                      price: unitPrice,
+                      description: product.description ?? undefined,
+                      rating: 5,
+                    })
+                  }
+                  onAddWishlist={() =>
+                    addWishlistItem({
+                      id: product.id,
+                      title: product.name,
+                      href: `/products/${product.slug}`,
+                      image: displayImage,
+                      price: unitPrice,
+                    })
+                  }
+                />
               </div>
             </div>
           </div>

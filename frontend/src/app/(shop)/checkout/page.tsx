@@ -26,7 +26,7 @@ const PAYMENT_OPTIONS = [
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, subtotal, setItems } = useCart();
+  const { items, subtotal, setItems, appliedCoupon, removeCoupon } = useCart();
   const [member, setMember] = useState<Member | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<string>(PAYMENT_OPTIONS[2].value);
@@ -35,7 +35,16 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const totals = useMemo(() => calculateShopTotals(subtotal), [subtotal]);
+  const totals = useMemo(
+    () =>
+      calculateShopTotals(
+        subtotal,
+        appliedCoupon?.discount ?? 0,
+        undefined,
+        appliedCoupon?.shipping_discount ?? 0,
+      ),
+    [subtotal, appliedCoupon?.discount, appliedCoupon?.shipping_discount],
+  );
 
   useEffect(() => {
     const token = getCookie(MEMBER_TOKEN_KEY);
@@ -73,8 +82,9 @@ export default function CheckoutPage() {
 
     setLoading(true);
     try {
-      const res = await submitMemberCheckout(items, paymentMethod, token);
+      const res = await submitMemberCheckout(items, paymentMethod, token, appliedCoupon?.code);
       setItems([]);
+      removeCoupon();
       setSuccess(`สั่งซื้อสำเร็จ — เลขที่ออเดอร์ ${res.data.order_number}`);
       window.setTimeout(() => router.push("/account"), 1800);
     } catch (err: unknown) {
@@ -257,6 +267,13 @@ export default function CheckoutPage() {
                           <span>Subtotal (รวม VAT)</span>
                           <span>฿{formatBaht(totals.subtotal)}</span>
                         </li>
+
+                        {totals.discount > 0 ? (
+                          <li className="tp-order-info-list-subtotal">
+                            <span>ส่วนลด ({appliedCoupon?.code})</span>
+                            <span className="text-success">−฿{formatBaht(totals.discount)}</span>
+                          </li>
+                        ) : null}
 
                         <li className="tp-order-info-list-shipping">
                           <span>Shipping</span>

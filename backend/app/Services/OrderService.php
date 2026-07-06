@@ -2,11 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\Coupon;
+use App\Models\CouponUsage;
 use App\Models\Customer;
 use App\Models\Order;
-use App\Models\OrderItem;
-use App\Models\Product;
-use App\Models\ProductVariation;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -29,7 +28,7 @@ class OrderService
         $profit = 0;
 
         foreach ($items as $item) {
-            $variation = ProductVariation::with('product')->findOrFail($item['variation_id']);
+            $variation = \App\Models\ProductVariation::with('product')->findOrFail($item['variation_id']);
             $product = $variation->product;
             $subtotal = $product->price * $item['quantity'];
 
@@ -59,10 +58,15 @@ class OrderService
         ?string $paymentMethod = null,
         ?Customer $customer = null,
         ?User $staff = null,
+        ?Coupon $coupon = null,
+        int $shippingFee = 0,
+        int $shippingDiscount = 0,
+        ?string $posSessionId = null,
     ): Order {
-        return DB::transaction(function () use ($items, $channel, $discount, $paymentMethod, $customer, $staff) {
+        return DB::transaction(function () use ($items, $channel, $discount, $paymentMethod, $customer, $staff, $coupon, $shippingFee, $shippingDiscount, $posSessionId) {
             $built = $this->buildLineItems($items);
-            $finalTotal = max(0, $built['total'] - $discount);
+            $payableShipping = max(0, $shippingFee - $shippingDiscount);
+            $finalTotal = max(0, $built['total'] - $discount + $payableShipping);
             $finalProfit = max(0, $built['profit'] - $discount);
 
             $this->inventory->deduct($items);
@@ -72,7 +76,11 @@ class OrderService
                 'channel' => $channel,
                 'customer_id' => $customer?->id,
                 'staff_id' => $staff?->id,
+                'coupon_id' => $coupon?->id,
+                'coupon_code' => $coupon?->code,
                 'discount' => $discount,
+                'shipping_fee' => $shippingFee,
+                'shipping_discount' => $shippingDiscount,
                 'total' => $finalTotal,
                 'profit' => $finalProfit,
                 'payment_method' => $paymentMethod,
@@ -81,7 +89,7 @@ class OrderService
             ]);
 
             foreach ($built['lineItems'] as $line) {
-                OrderItem::create([
+                \App\Models\OrderItem::create([
                     'order_id' => $order->id,
                     'product_id' => $line['product']->id,
                     'product_variation_id' => $line['variation']->id,
@@ -94,6 +102,24 @@ class OrderService
             }
 
             $this->loyalty->earnPoints($customer, $order);
+
+            if ($coupon) {
+                $coupon->increment('used_count');
+                CouponUsage::create([
+                    'coupon_id' => $coupon->id,
+                    'order_id' => $order->id,
+                    'customer_id' => $customer?->id,
+                    'channel' => $channel,
+                    'discount_amount' => $discount,
+                    'shipping_discount' => $shippingDiscount,
+                    'order_subtotal' => $built['total'],
+                    'metadata' => array_filter([
+                        'type' => $coupon->type,
+                        'apply_to' => $coupon->apply_to,
+                        'pos_session_id' => $customer ? null : $posSessionId,
+                    ]),
+                ]);
+            }
 
             return $order->load(['items', 'customer']);
         });

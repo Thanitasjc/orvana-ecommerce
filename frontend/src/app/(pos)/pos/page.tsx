@@ -18,6 +18,7 @@ import {
   type PosProduct,
   type PosVariation,
 } from "@/lib/api/pos";
+import { getPosSessionId } from "@/lib/pos/session";
 import { deleteCookie, getCookie, STAFF_ROLE_KEY, STAFF_TOKEN_KEY } from "@/lib/auth/cookies";
 import { calculatePosTotals } from "@/lib/pos/pricing";
 
@@ -127,18 +128,20 @@ export default function PosPage() {
     const snapshotTotal = snapshotTotals.total;
 
     try {
-      const res = await submitPosCheckout(
-        {
-          items: cart.items.map((item) => ({
-            variation_id: item.variationId,
-            quantity: item.quantity,
-          })),
-          customer_id: selectedCustomer?.id,
-          discount: cart.discount,
-          payment_method: payload.paymentMethod,
-        },
-        token,
-      );
+      const checkoutPayload = {
+        items: cart.items.map((item) => ({
+          variation_id: item.variationId,
+          quantity: item.quantity,
+        })),
+        customer_id: selectedCustomer?.id,
+        payment_method: payload.paymentMethod,
+        pos_session_id: getPosSessionId(),
+        ...(cart.appliedCoupon
+          ? { coupon_code: cart.appliedCoupon.code }
+          : { discount: cart.discount }),
+      };
+
+      const res = await submitPosCheckout(checkoutPayload, token);
 
       const order = res.data;
       const paid = payload.amountPaid ?? snapshotTotal;
@@ -217,10 +220,15 @@ export default function PosPage() {
           items={cart.items}
           itemCount={cart.itemCount}
           totals={cart.totals}
+          appliedCoupon={cart.appliedCoupon}
+          couponError={cart.couponError}
+          couponLoading={cart.couponLoading}
           selectedCustomer={selectedCustomer}
           onSelectCustomer={setSelectedCustomer}
           onAddCustomer={() => setShowAddCustomer(true)}
           onDiscountChange={cart.setDiscount}
+          onApplyCoupon={cart.applyCoupon}
+          onRemoveCoupon={cart.removeCoupon}
           onUpdateQuantity={cart.updateQuantity}
           onRemoveItem={cart.removeItem}
           onCheckout={() => {

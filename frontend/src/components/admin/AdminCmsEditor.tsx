@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminPanel } from "@/components/admin/AdminPanel";
+import { AdminHeaderCmsEditor } from "@/components/admin/cms/AdminHeaderCmsEditor";
 import { AdminCmsHeroFormModal } from "@/components/admin/cms/AdminCmsHeroFormModal";
 import { AdminCmsProductPickerModal } from "@/components/admin/cms/AdminCmsProductPickerModal";
 import { fetchAdminProducts, type AdminProduct } from "@/lib/api/adminProducts";
@@ -17,9 +18,16 @@ import {
 } from "@/lib/cms/homepageCms";
 import { getCookie, STAFF_TOKEN_KEY } from "@/lib/auth/cookies";
 
-type CmsTab = "hero_banner" | "customer_favorite" | "featured_products";
+type CmsTab = "hero_banner" | "customer_favorite" | "featured_products" | "header";
 
 const TABS: { key: CmsTab; label: string; title: string; description: string; addLabel: string }[] = [
+  {
+    key: "header",
+    label: "Header",
+    title: "Header",
+    description: "จัดการโลโก้และเมนูบน Header",
+    addLabel: "+ เพิ่มเมนู",
+  },
   {
     key: "hero_banner",
     label: "Hero Banner",
@@ -474,6 +482,9 @@ export function AdminCmsEditor() {
         ))}
       </div>
 
+      {activeTab === "header" ? <AdminHeaderCmsEditor /> : null}
+
+      {activeTab !== "header" ? (
       <AdminPanel
         title={activeMeta.title}
         action={
@@ -508,7 +519,10 @@ export function AdminCmsEditor() {
           บันทึกลง backend — หน้าร้านจะอ่านจาก API `/cms/homepage`
         </p>
       </AdminPanel>
+      ) : null}
 
+      {activeTab !== "header" ? (
+      <>
       <AdminCmsHeroFormModal
         open={heroFormOpen}
         slide={editingHero}
@@ -526,6 +540,8 @@ export function AdminCmsEditor() {
         onClose={() => setPickerOpen(false)}
         onPick={(product) => addProductToSection(pickerSection, product)}
       />
+      </>
+      ) : null}
     </>
   );
 }

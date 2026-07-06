@@ -54,11 +54,16 @@ export async function submitMemberCheckout(
   items: CartItem[],
   paymentMethod: string,
   token: string,
+  couponCode?: string | null,
 ) {
-  const payload = {
+  const payload: Record<string, unknown> = {
     items: await buildCheckoutItems(items),
     payment_method: paymentMethod,
   };
+
+  if (couponCode) {
+    payload.coupon_code = couponCode;
+  }
 
   return apiFetch<{ data: CheckoutOrder }>("/member/checkout", {
     method: "POST",

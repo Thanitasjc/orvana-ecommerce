@@ -5,7 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useCart } from "@/components/shop/cart/CartProvider";
+import { useCompare } from "@/components/shop/compare/CompareProvider";
+import { useWishlist } from "@/components/shop/wishlist/WishlistProvider";
+import { formatBaht } from "@/lib/pricing/vat";
 import { apiFetch } from "@/lib/api/client";
+import { fetchHeaderCms } from "@/lib/api/headerCms";
+import { defaultHeaderCms, getVisibleMenuItems, type HeaderCmsState } from "@/lib/cms/headerCms";
+import { resolveProductImage } from "@/lib/api/products";
 import { MEMBER_TOKEN_KEY, deleteCookie, getCookie, setCookie } from "@/lib/auth/cookies";
 
 export function Header() {
@@ -17,8 +23,11 @@ export function Header() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [memberName, setMemberName] = useState<string | null>(null);
+  const [headerCms, setHeaderCms] = useState<HeaderCmsState>(defaultHeaderCms);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
   const { cartCount, items: cartItems, subtotal, removeItem } = useCart();
+  const { compareCount } = useCompare();
+  const { wishlistCount } = useWishlist();
   const freeShippingTarget = 50;
   const shippingProgress = Math.min(100, Math.round((subtotal / freeShippingTarget) * 100));
 
@@ -37,6 +46,10 @@ export function Header() {
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    void fetchHeaderCms().then(setHeaderCms);
   }, []);
 
   useEffect(() => {
@@ -111,7 +124,7 @@ export function Header() {
               <div className="col-xl-2 col-lg-2 col-md-6 col-6">
                 <div className="logo">
                   <Link href="/">
-                    <img src="/assets/img/logo/logo.svg" alt="AESTHETE" />
+                    <img src={resolveProductImage(headerCms.logoUrl)} alt={headerCms.logoAlt} />
                   </Link>
                 </div>
               </div>
@@ -119,18 +132,17 @@ export function Header() {
                 <div className="main-menu menu-style-2">
                   <nav className="tp-main-menu-content">
                     <ul>
-                      <li>
-                        <Link href="/">หน้าแรก</Link>
-                      </li>
-                      <li>
-                        <Link href="/shop">ร้านค้า</Link>
-                      </li>
+                      {getVisibleMenuItems(headerCms).map((item) => (
+                        <li key={item.id}>
+                          <Link href={item.href}>{item.label}</Link>
+                        </li>
+                      ))}
                     </ul>
                   </nav>
                 </div>
               </div>
               <div className="col-xl-3 col-lg-10 col-md-6 col-6">
-                <div className="tp-header-action d-flex align-items-center justify-content-end ml-50">
+                <div className="d-flex align-items-center justify-content-end">
                   <div className="tp-header-login d-none d-lg-block" style={{ position: "relative" }} ref={accountMenuRef}>
                     <button
                       type="button"
@@ -227,7 +239,66 @@ export function Header() {
                     ) : null}
                   </div>
 
-                  <div className="tp-header-action-item ml-20">
+                  <div className="tp-header-action d-flex align-items-center ml-30">
+                    <div className="tp-header-action-item d-none d-lg-block">
+                      <Link href="/compare" className="tp-header-action-btn" aria-label="Compare products">
+                        <svg width="20" height="19" viewBox="0 0 20 19" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path
+                            d="M14.8396 17.3319V3.71411"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M19.1556 13L15.0778 17.0967L11 13"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M4.91115 1.00056V14.6183"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M0.833496 5.09667L4.91127 1L8.98905 5.09667"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        {compareCount > 0 ? <span className="tp-header-action-badge">{compareCount}</span> : null}
+                      </Link>
+                    </div>
+                    <div className="tp-header-action-item d-none d-lg-block">
+                      <Link href="/wishlist" className="tp-header-action-btn" aria-label="Wishlist">
+                        <svg width="22" height="20" viewBox="0 0 22 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path
+                            fillRule="evenodd"
+                            clipRule="evenodd"
+                            d="M11.239 18.8538C13.4096 17.5179 15.4289 15.9456 17.2607 14.1652C18.5486 12.8829 19.529 11.3198 20.1269 9.59539C21.2029 6.25031 19.9461 2.42083 16.4289 1.28752C14.5804 0.692435 12.5616 1.03255 11.0039 2.20148C9.44567 1.03398 7.42754 0.693978 5.57894 1.28752C2.06175 2.42083 0.795919 6.25031 1.87187 9.59539C2.46978 11.3198 3.45021 12.8829 4.73806 14.1652C6.56988 15.9456 8.58917 17.5179 10.7598 18.8538L10.9949 19L11.239 18.8538Z"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M7.26062 5.05302C6.19531 5.39332 5.43839 6.34973 5.3438 7.47501"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        {wishlistCount > 0 ? <span className="tp-header-action-badge">{wishlistCount}</span> : null}
+                      </Link>
+                    </div>
+                    <div className="tp-header-action-item">
                     <button
                       className="tp-header-action-btn cartmini-open-btn"
                       type="button"
@@ -274,6 +345,7 @@ export function Header() {
                       </svg>
                       <span className="tp-header-action-badge">{cartCount}</span>
                     </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -415,7 +487,7 @@ export function Header() {
             </div>
             <div className="cartmini__shipping">
               <p>
-                Free Shipping for all orders over <span>${freeShippingTarget.toFixed(0)}</span>
+                Free Shipping for all orders over <span>฿{formatBaht(freeShippingTarget, 0)}</span>
               </p>
               <div className="progress">
                 <div
@@ -443,7 +515,7 @@ export function Header() {
                       </Link>
                     </h5>
                     <div className="cartmini__price-wrapper">
-                      <span className="cartmini__price">${item.price.toFixed(2)}</span>
+                      <span className="cartmini__price">฿{formatBaht(item.price)}</span>
                       <span className="cartmini__quantity">x{item.quantity}</span>
                     </div>
                   </div>
@@ -462,7 +534,7 @@ export function Header() {
           <div className="cartmini__checkout">
             <div className="cartmini__checkout-title mb-30">
               <h4>Subtotal:</h4>
-              <span>${subtotal.toFixed(2)}</span>
+              <span>฿{formatBaht(subtotal)}</span>
             </div>
             <div className="cartmini__checkout-btn">
               <Link href="/cart" className="tp-btn mb-10 w-100" onClick={() => setIsCartOpen(false)}>

@@ -38,7 +38,9 @@ export type PosCheckoutPayload = {
   items: PosCheckoutItem[];
   customer_id?: number;
   discount?: number;
+  coupon_code?: string;
   payment_method?: string;
+  pos_session_id?: string;
 };
 
 export type PosOrderItem = {

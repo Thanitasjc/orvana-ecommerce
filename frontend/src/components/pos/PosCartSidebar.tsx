@@ -1,9 +1,11 @@
 "use client";
 
+import { FormEvent, useState } from "react";
+import { getPosSessionId } from "@/lib/pos/session";
 import type { PosCustomer } from "@/lib/api/pos";
 import { PosMemberSelector } from "@/components/pos/PosMemberSelector";
 import { PosTotalsBreakdown } from "@/components/pos/PosTotalsBreakdown";
-import type { PosCartItem } from "@/components/pos/usePosCart";
+import type { PosCartItem, PosCouponApplyOptions } from "@/components/pos/usePosCart";
 import type { VatBreakdown } from "@/lib/pricing/vat";
 import { formatBaht } from "@/lib/pricing/vat";
 
@@ -11,10 +13,15 @@ type PosCartSidebarProps = {
   items: PosCartItem[];
   itemCount: number;
   totals: VatBreakdown;
+  appliedCoupon: { code: string; name: string; discount: number } | null;
+  couponError: string | null;
+  couponLoading: boolean;
   selectedCustomer: PosCustomer | null;
   onSelectCustomer: (customer: PosCustomer | null) => void;
   onAddCustomer: () => void;
   onDiscountChange: (value: number) => void;
+  onApplyCoupon: (code: string, options?: PosCouponApplyOptions) => Promise<boolean>;
+  onRemoveCoupon: () => void;
   onUpdateQuantity: (variationId: number, quantity: number) => void;
   onRemoveItem: (variationId: number) => void;
   onCheckout: () => void;
@@ -24,14 +31,32 @@ export function PosCartSidebar({
   items,
   itemCount,
   totals,
+  appliedCoupon,
+  couponError,
+  couponLoading,
   selectedCustomer,
   onSelectCustomer,
   onAddCustomer,
   onDiscountChange,
+  onApplyCoupon,
+  onRemoveCoupon,
   onUpdateQuantity,
   onRemoveItem,
   onCheckout,
 }: PosCartSidebarProps) {
+  const [couponInput, setCouponInput] = useState("");
+
+  async function handleCouponSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const applied = await onApplyCoupon(couponInput, {
+      customerId: selectedCustomer?.id,
+      posSessionId: getPosSessionId(),
+    });
+    if (applied) {
+      setCouponInput("");
+    }
+  }
+
   return (
     <div className="flex w-full shrink-0 flex-col border-t border-slate-200 bg-white lg:w-[420px] lg:border-l lg:border-t-0">
       <div className="border-b border-slate-200 bg-slate-50 p-4">
@@ -111,16 +136,50 @@ export function PosCartSidebar({
       </div>
 
       <div className="space-y-3 border-t border-slate-200 bg-slate-50 p-4">
-        <div className="flex items-center justify-between text-sm text-slate-600">
-          <span>ส่วนลดหน้าร้าน (บาท)</span>
-          <input
-            type="number"
-            min={0}
-            value={totals.discount}
-            onChange={(event) => onDiscountChange(Math.max(0, Number(event.target.value) || 0))}
-            className="w-20 rounded-md border border-slate-200 px-2 py-1 text-right text-sm font-bold focus:border-emerald-500 focus:outline-none"
-          />
-        </div>
+        <form onSubmit={(event) => void handleCouponSubmit(event)} className="space-y-2">
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-500">รหัสคูปอง</label>
+          {appliedCoupon ? (
+            <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm">
+              <span className="font-medium text-emerald-800">
+                {appliedCoupon.code} — −฿{formatBaht(appliedCoupon.discount)}
+              </span>
+              <button type="button" onClick={onRemoveCoupon} className="text-xs text-rose-600 hover:underline">
+                ลบ
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={couponInput}
+                onChange={(event) => setCouponInput(event.target.value.toUpperCase())}
+                placeholder="SAVE10"
+                className="flex-1 rounded-md border border-slate-200 px-3 py-2 text-sm uppercase focus:border-emerald-500 focus:outline-none"
+              />
+              <button
+                type="submit"
+                disabled={couponLoading}
+                className="rounded-md bg-slate-800 px-3 py-2 text-xs font-bold text-white hover:bg-slate-900 disabled:opacity-50"
+              >
+                {couponLoading ? "..." : "ใช้"}
+              </button>
+            </div>
+          )}
+          {couponError ? <p className="text-xs text-rose-600">{couponError}</p> : null}
+        </form>
+
+        {!appliedCoupon ? (
+          <div className="flex items-center justify-between text-sm text-slate-600">
+            <span>ส่วนลดหน้าร้าน (บาท)</span>
+            <input
+              type="number"
+              min={0}
+              value={totals.discount}
+              onChange={(event) => onDiscountChange(Math.max(0, Number(event.target.value) || 0))}
+              className="w-20 rounded-md border border-slate-200 px-2 py-1 text-right text-sm font-bold focus:border-emerald-500 focus:outline-none"
+            />
+          </div>
+        ) : null}
 
         <PosTotalsBreakdown totals={totals} emphasizeTotal />
 
