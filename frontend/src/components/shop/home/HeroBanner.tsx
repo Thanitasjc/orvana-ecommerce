@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { StorefrontHeroSlide } from "@/lib/api/cms";
@@ -7,6 +8,27 @@ import { youtubeEmbedUrl } from "@/lib/cms/youtube";
 
 type HeroBannerProps = {
   slides?: StorefrontHeroSlide[];
+};
+
+const heroMediaStyle: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  overflow: "hidden",
+  zIndex: 0,
+};
+
+const youtubeCoverStyle: CSSProperties = {
+  position: "absolute",
+  top: "50%",
+  left: "50%",
+  width: "177.78vh",
+  height: "100vh",
+  minWidth: "100%",
+  minHeight: "56.25vw",
+  maxWidth: "none",
+  transform: "translate(-50%, -50%)",
+  border: 0,
+  pointerEvents: "none",
 };
 
 const defaultSlides: StorefrontHeroSlide[] = [
@@ -69,10 +91,11 @@ export function HeroBanner({ slides = defaultSlides }: HeroBannerProps) {
 
         return (
           <div className={`slide ${isActive ? "active" : ""}`} key={`${slide.mediaType}-${slide.youtubeId ?? slide.image}-${index}`}>
-            <div className="hero-media">
+            <div className="hero-media" style={heroMediaStyle}>
               {isYoutube ? (
                 <iframe
                   className="hero-youtube"
+                  style={youtubeCoverStyle}
                   src={isActive ? youtubeEmbedUrl(slide.youtubeId!) : undefined}
                   title={slide.title ?? `hero-youtube-${index + 1}`}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
