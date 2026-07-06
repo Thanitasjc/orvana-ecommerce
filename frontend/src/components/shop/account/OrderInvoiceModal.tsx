@@ -2,6 +2,7 @@
 
 import type { Order } from "@/lib/orders/types";
 import { ORDER_STATUS_OPTIONS, PAYMENT_STATUS_OPTIONS } from "@/lib/orders/types";
+import { printOrderReceipt } from "@/lib/print/orderReceipt";
 import { calculateVatFromInclusiveTotal, VAT_PERCENT } from "@/lib/pricing/vat";
 
 function formatMoney(value: number | string) {
@@ -159,7 +160,7 @@ export function OrderInvoiceModal({
             <button type="button" className="tp-btn-border" onClick={onClose}>
               ปิด
             </button>
-            <button type="button" className="tp-btn" onClick={() => window.print()}>
+            <button type="button" className="tp-btn" onClick={() => printOrderReceipt(order)}>
               พิมพ์ใบเสร็จ
             </button>
           </div>
