@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { BlogPost } from "@/lib/api/blogs";
-import { blogHref, formatBlogDate } from "@/lib/api/blogs";
+import { blogHref } from "@/lib/api/blogs";
 import { resolveProductImage } from "@/lib/api/products";
 
 const DEFAULT_BLOG_IMAGE = "/assets/img/blog/2/blog-1.jpg";
@@ -20,14 +20,6 @@ export function BlogListItem({ post }: BlogListItemProps) {
         </Link>
       </div>
       <div className="tp-blog-list-content">
-        <div className="tp-blog-grid-meta">
-          <span>
-            <i className="fa-regular fa-user" /> {post.author}
-          </span>
-          <span>
-            <i className="fa-regular fa-calendar" /> {formatBlogDate(post.published_at)}
-          </span>
-        </div>
         <h3 className="tp-blog-grid-title">
           <Link href={blogHref(post.slug)}>{post.title}</Link>
         </h3>
