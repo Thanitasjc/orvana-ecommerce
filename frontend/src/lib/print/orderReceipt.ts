@@ -1,6 +1,9 @@
 import type { Order } from "@/lib/orders/types";
 import { formatMoney } from "@/lib/orders/types";
-import { calculateVatFromInclusiveTotal, VAT_PERCENT } from "@/lib/pricing/vat";
+import {
+  buildOrderTotalsPrintHtml,
+  calculateOrderTotals,
+} from "@/lib/orders/orderTotals";
 
 function formatDate(value?: string) {
   if (!value) return "-";
@@ -22,8 +25,8 @@ function escapeHtml(value: string) {
 }
 
 function buildOrderReceiptHtml(order: Order) {
-  const orderTotal = typeof order.total === "number" ? order.total : Number(order.total);
-  const vat = calculateVatFromInclusiveTotal(Number.isFinite(orderTotal) ? orderTotal : 0);
+  const totals = calculateOrderTotals(order);
+  const totalsHtml = buildOrderTotalsPrintHtml(totals);
 
   const itemsHtml = (order.items ?? [])
     .map((item) => {
@@ -103,6 +106,7 @@ function buildOrderReceiptHtml(order: Order) {
       color: #0f172a;
       margin-top: 6px;
     }
+    .discount { color: #be123c; font-weight: 700; }
     .footer {
       text-align: center;
       font-size: 10px;
@@ -134,9 +138,7 @@ function buildOrderReceiptHtml(order: Order) {
     </div>
 
     <div class="section">
-      <div class="total-row"><span>มูลค่าก่อน VAT:</span><span>฿${formatMoney(vat.amountBeforeVat)}</span></div>
-      <div class="total-row"><span>VAT ${VAT_PERCENT}%:</span><span>฿${formatMoney(vat.vatAmount)}</span></div>
-      <div class="grand-total"><span>รวมสุทธิ (รวม VAT):</span><span>฿${formatMoney(order.total)}</span></div>
+      ${totalsHtml}
     </div>
 
     <div class="footer section">

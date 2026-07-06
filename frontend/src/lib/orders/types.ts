@@ -17,6 +17,10 @@ export type Order = {
   id: number;
   order_number: string;
   total: number | string;
+  discount?: number | string;
+  coupon_code?: string | null;
+  shipping_fee?: number | string;
+  shipping_discount?: number | string;
   status: string;
   payment_status: string;
   payment_method?: string | null;

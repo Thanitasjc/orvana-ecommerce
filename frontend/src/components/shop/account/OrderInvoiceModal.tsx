@@ -2,8 +2,8 @@
 
 import type { Order } from "@/lib/orders/types";
 import { ORDER_STATUS_OPTIONS, PAYMENT_STATUS_OPTIONS } from "@/lib/orders/types";
+import { OrderTotalsSummary } from "@/components/orders/OrderTotalsSummary";
 import { printOrderReceipt } from "@/lib/print/orderReceipt";
-import { calculateVatFromInclusiveTotal, VAT_PERCENT } from "@/lib/pricing/vat";
 
 function formatMoney(value: number | string) {
   const amount = typeof value === "number" ? value : Number(value);
@@ -35,9 +35,6 @@ export function OrderInvoiceModal({
   paymentLabel,
 }: OrderInvoiceModalProps) {
   if (!order) return null;
-
-  const orderTotal = typeof order.total === "number" ? order.total : Number(order.total);
-  const vat = calculateVatFromInclusiveTotal(Number.isFinite(orderTotal) ? orderTotal : 0);
 
   return (
     <div
@@ -149,12 +146,7 @@ export function OrderInvoiceModal({
               </table>
             </div>
 
-            <div className="text-end">
-              <p className="mb-5 text-muted small">
-                มูลค่าก่อน VAT: ฿{formatMoney(vat.amountBeforeVat)} | VAT {VAT_PERCENT}%: ฿{formatMoney(vat.vatAmount)}
-              </p>
-              <h5 className="mb-0">ยอดรวม (รวม VAT): ฿{formatMoney(order.total)}</h5>
-            </div>
+            <OrderTotalsSummary order={order} variant="shop" />
           </div>
           <div className="modal-footer">
             <button type="button" className="tp-btn-border" onClick={onClose}>

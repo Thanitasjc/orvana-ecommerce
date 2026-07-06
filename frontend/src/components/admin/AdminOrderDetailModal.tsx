@@ -6,8 +6,8 @@ import {
   ORDER_STATUS_OPTIONS,
   PAYMENT_STATUS_OPTIONS,
 } from "@/lib/orders/types";
+import { OrderTotalsSummary } from "@/components/orders/OrderTotalsSummary";
 import { printOrderReceipt } from "@/lib/print/orderReceipt";
-import { calculateVatFromInclusiveTotal, VAT_PERCENT } from "@/lib/pricing/vat";
 
 function formatDate(value?: string) {
   if (!value) return "-";
@@ -33,9 +33,6 @@ export function AdminOrderDetailModal({
   onStatusChange,
 }: AdminOrderDetailModalProps) {
   if (!order) return null;
-
-  const orderTotal = typeof order.total === "number" ? order.total : Number(order.total);
-  const vat = calculateVatFromInclusiveTotal(Number.isFinite(orderTotal) ? orderTotal : 0);
 
   return (
     <div
@@ -152,13 +149,7 @@ export function AdminOrderDetailModal({
             </table>
           </div>
 
-          <div className="mt-5 text-right">
-            <p className="text-xs text-slate-500">
-              มูลค่าก่อน VAT: ฿{formatMoney(vat.amountBeforeVat)} | VAT {VAT_PERCENT}%: ฿
-              {formatMoney(vat.vatAmount)}
-            </p>
-            <p className="mt-1 text-lg font-bold text-white">ยอดรวม (รวม VAT): ฿{formatMoney(order.total)}</p>
-          </div>
+          <OrderTotalsSummary order={order} variant="admin" />
         </div>
 
         <div className="flex justify-end gap-2 border-t border-slate-800 px-6 py-4">
