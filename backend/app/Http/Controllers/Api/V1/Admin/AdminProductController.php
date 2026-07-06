@@ -158,7 +158,7 @@ class AdminProductController extends Controller
             'name' => [$product ? 'sometimes' : 'required', 'string', 'max:255'],
             'slug' => $slugRule,
             'description' => ['nullable', 'string', 'max:5000'],
-            'detail_content' => ['nullable', 'string', 'max:20000'],
+            'detail_content' => ['nullable', 'string'],
             'price' => [$product ? 'sometimes' : 'required', 'integer', 'min:0'],
             'cost' => ['nullable', 'integer', 'min:0'],
             'image' => ['nullable', 'string', 'max:500'],
@@ -324,7 +324,10 @@ class AdminProductController extends Controller
             return null;
         }
 
-        $clean = strip_tags($html, '<p><br><strong><b><em><i><ul><ol><li><h3><h4><span>');
+        $allowed = '<p><br><strong><b><em><i><u><s><strike><h1><h2><h3><h4><h5><h6>'
+            .'<ul><ol><li><blockquote><pre><code><a><img><span><div><sub><sup>'
+            .'<table><thead><tbody><tr><td><th>';
+        $clean = strip_tags($html, $allowed);
 
         return trim($clean) === '' ? null : $clean;
     }
