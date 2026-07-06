@@ -45,7 +45,7 @@ export function BlogListing({
   search,
   tag,
 }: BlogListingProps) {
-  const [view, setView] = useState<BlogViewMode>("list");
+  const [view, setView] = useState<BlogViewMode>("grid");
   const { start, end } = resultRange(currentPage, perPage, total);
 
   return (

@@ -25,11 +25,6 @@ export function BlogGridItem({ post }: BlogGridItemProps) {
           </div>
         </div>
         <div className="tp-blog-grid-content">
-          <div className="tp-blog-grid-meta">
-            <span>
-              <i className="fa-regular fa-user" /> {post.author}
-            </span>
-          </div>
           <h3 className="tp-blog-grid-title">
             <Link href={blogHref(post.slug)}>{post.title}</Link>
           </h3>
