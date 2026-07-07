@@ -38,3 +38,7 @@ services:
         value: database
       - key: FILESYSTEM_DISK
         value: public
+      - key: OMISE_PUBLIC_KEY
+        value: pkey_test_689gs96ehzjmf5537qy
+      - key: OMISE_SECRET_KEY
+        value: skey_test_689gs96uyhn5qdplvi6
