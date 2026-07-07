@@ -6,7 +6,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/components/shop/cart/CartProvider";
 import { ShopVatSummary } from "@/components/shop/ShopVatSummary";
-import { submitMemberCheckout } from "@/lib/api/checkout";
+import { submitGuestCheckout, submitMemberCheckout } from "@/lib/api/checkout";
 import { apiFetch } from "@/lib/api/client";
 import { getCookie, MEMBER_TOKEN_KEY } from "@/lib/auth/cookies";
 import { fetchLoyaltySettings } from "@/lib/loyalty/api";
@@ -23,6 +23,8 @@ type Member = {
   points: number;
 };
 
+type CheckoutMode = "guest" | "member";
+
 const PAYMENT_OPTIONS = [
   { id: "bank_transfer", label: "โอนเงินผ่านธนาคาร", value: "โอนเงินผ่านธนาคาร" },
   { id: "cod", label: "เก็บเงินปลายทาง", value: "เก็บเงินปลายทาง" },
@@ -34,6 +36,7 @@ export default function CheckoutPage() {
   const { items, subtotal, setItems, appliedCoupon, removeCoupon } = useCart();
   const [member, setMember] = useState<Member | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [checkoutMode, setCheckoutMode] = useState<CheckoutMode>("guest");
   const [paymentMethod, setPaymentMethod] = useState<string>(PAYMENT_OPTIONS[2].value);
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -42,11 +45,12 @@ export default function CheckoutPage() {
   const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings>(DEFAULT_LOYALTY_SETTINGS);
   const [pointsToRedeem, setPointsToRedeem] = useState(0);
 
+  const isMemberCheckout = checkoutMode === "member" && !!member;
   const couponDiscount = appliedCoupon?.discount ?? 0;
   const loyaltyCheckout = calcLoyaltyCheckout(
     subtotal,
     couponDiscount,
-    pointsToRedeem,
+    isMemberCheckout ? pointsToRedeem : 0,
     member?.points ?? 0,
     loyaltySettings,
   );
@@ -55,11 +59,11 @@ export default function CheckoutPage() {
     () =>
       calculateShopTotals(
         subtotal,
-        couponDiscount + loyaltyCheckout.pointsDiscount,
+        couponDiscount + (isMemberCheckout ? loyaltyCheckout.pointsDiscount : 0),
         undefined,
         appliedCoupon?.shipping_discount ?? 0,
       ),
-    [subtotal, couponDiscount, loyaltyCheckout.pointsDiscount, appliedCoupon?.shipping_discount],
+    [subtotal, couponDiscount, isMemberCheckout, loyaltyCheckout.pointsDiscount, appliedCoupon?.shipping_discount],
   );
 
   useEffect(() => {
@@ -76,7 +80,10 @@ export default function CheckoutPage() {
     }
 
     apiFetch<{ data: Member }>("/member/me", { token })
-      .then((res) => setMember(res.data))
+      .then((res) => {
+        setMember(res.data);
+        setCheckoutMode("member");
+      })
       .catch(() => setMember(null))
       .finally(() => setAuthChecked(true));
   }, []);
@@ -91,34 +98,69 @@ export default function CheckoutPage() {
       return;
     }
 
-    const token = getCookie(MEMBER_TOKEN_KEY);
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-
     if (!agreed) {
       setError("กรุณายอมรับเงื่อนไขก่อนสั่งซื้อ");
       return;
     }
 
+    if (checkoutMode === "member" && !member) {
+      setError("กรุณาเข้าสู่ระบบสมาชิก หรือเลือกชำระแบบไม่สมัคร");
+      return;
+    }
+
+    const form = new FormData(e.currentTarget);
+
     setLoading(true);
     try {
-      const res = await submitMemberCheckout(
+      if (checkoutMode === "member" && member) {
+        const token = getCookie(MEMBER_TOKEN_KEY);
+        if (!token) {
+          router.push("/login?redirect=/checkout");
+          return;
+        }
+
+        const res = await submitMemberCheckout(
+          items,
+          paymentMethod,
+          token,
+          appliedCoupon?.code,
+          loyaltyCheckout.pointsUsed,
+        );
+        setItems([]);
+        removeCoupon();
+        setSuccess(`สั่งซื้อสำเร็จ — เลขที่ออเดอร์ ${res.data.order_number}`);
+        window.setTimeout(() => router.push("/account"), 1800);
+        return;
+      }
+
+      const res = await submitGuestCheckout(
         items,
         paymentMethod,
-        token,
+        {
+          first_name: String(form.get("first_name") ?? "").trim(),
+          last_name: String(form.get("last_name") ?? "").trim(),
+          email: String(form.get("email") ?? "").trim(),
+          phone: String(form.get("phone") ?? "").trim(),
+          address: String(form.get("address") ?? "").trim(),
+          province: String(form.get("province") ?? "").trim(),
+          postcode: String(form.get("postcode") ?? "").trim(),
+          notes: String(form.get("notes") ?? "").trim() || undefined,
+        },
         appliedCoupon?.code,
-        loyaltyCheckout.pointsUsed,
       );
       setItems([]);
       removeCoupon();
-      setSuccess(`สั่งซื้อสำเร็จ — เลขที่ออเดอร์ ${res.data.order_number}`);
-      window.setTimeout(() => router.push("/account"), 1800);
+      setSuccess(
+        `สั่งซื้อสำเร็จ — เลขที่ออเดอร์ ${res.data.order_number} เราส่งอีเมลยืนยันให้แล้ว`,
+      );
     } catch (err: unknown) {
       const apiErr = err as { message?: string; errors?: Record<string, string[]> };
       const message =
-        apiErr.errors?.points_to_redeem?.[0] ?? apiErr.message ?? "สั่งซื้อไม่สำเร็จ";
+        apiErr.errors?.points_to_redeem?.[0] ??
+        apiErr.errors?.coupon_code?.[0] ??
+        apiErr.errors?.stock?.[0] ??
+        apiErr.message ??
+        "สั่งซื้อไม่สำเร็จ";
       setError(message);
     } finally {
       setLoading(false);
@@ -160,14 +202,57 @@ export default function CheckoutPage() {
 
       <section className="tp-checkout-area pb-120" data-bg-color="#EFF1F5">
         <div className="container">
-          {!member ? (
+          {!success ? (
+            <div className="mb-40 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setCheckoutMode("guest")}
+                className={`rounded-full px-5 py-2.5 text-sm font-bold transition ${
+                  checkoutMode === "guest"
+                    ? "bg-slate-900 text-white"
+                    : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                ชำระแบบไม่สมัคร
+              </button>
+              <button
+                type="button"
+                onClick={() => setCheckoutMode("member")}
+                className={`rounded-full px-5 py-2.5 text-sm font-bold transition ${
+                  checkoutMode === "member"
+                    ? "bg-emerald-600 text-white"
+                    : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                สมาชิก {member ? `(${member.name})` : "— เข้าสู่ระบบ"}
+              </button>
+            </div>
+          ) : null}
+
+          {checkoutMode === "member" && !member && !success ? (
             <div className="tp-checkout-verify mb-40">
               <div className="tp-checkout-verify-item">
                 <p className="tp-checkout-verify-reveal mb-0">
-                  ต้องเข้าสู่ระบบสมาชิกก่อนสั่งซื้อ —{" "}
-                  <Link href="/login">เข้าสู่ระบบ</Link> หรือ <Link href="/register">สมัครสมาชิก</Link>
+                  เข้าสู่ระบบเพื่อสะสมแต้มและดูประวัติออเดอร์ —{" "}
+                  <Link href="/login?redirect=/checkout">เข้าสู่ระบบ</Link> หรือ{" "}
+                  <Link href="/register">สมัครสมาชิก</Link>
+                  {" · "}
+                  <button
+                    type="button"
+                    className="font-bold text-emerald-700 underline"
+                    onClick={() => setCheckoutMode("guest")}
+                  >
+                    ชำระแบบไม่สมัคร
+                  </button>
                 </p>
               </div>
+            </div>
+          ) : null}
+
+          {checkoutMode === "guest" && !success ? (
+            <div className="mb-40 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+              สั่งซื้อได้โดยไม่ต้องสมัคร — กรอกข้อมูลจัดส่งด้านล่าง
+              {loyaltySettings.enabled ? " (สะสมแต้มเมื่อสมัครสมาชิกภายหลัง)" : null}
             </div>
           ) : null}
 
@@ -178,12 +263,29 @@ export default function CheckoutPage() {
                 ไปเลือกสินค้า
               </Link>
             </div>
+          ) : success ? (
+            <div className="white-bg p-5 text-center">
+              <p className="mb-3 text-success">{success}</p>
+              {checkoutMode === "guest" ? (
+                <p className="mb-4 text-sm text-slate-600">
+                  <Link href="/register" className="font-bold text-emerald-700 underline">
+                    สมัครสมาชิก
+                  </Link>{" "}
+                  เพื่อสะสมแต้มในออเดอร์ถัดไป
+                </p>
+              ) : null}
+              <Link href="/shop" className="tp-btn">
+                กลับไปเลือกสินค้า
+              </Link>
+            </div>
           ) : (
             <form onSubmit={onSubmit}>
               <div className="row">
                 <div className="col-lg-7">
                   <div className="tp-checkout-bill-area">
-                    <h3 className="tp-checkout-bill-title">Billing Details</h3>
+                    <h3 className="tp-checkout-bill-title">
+                      {checkoutMode === "guest" ? "ข้อมูลจัดส่ง" : "Billing Details"}
+                    </h3>
                     <div className="tp-checkout-bill-form">
                       <div className="tp-checkout-bill-inner">
                         <div className="row">
@@ -198,6 +300,7 @@ export default function CheckoutPage() {
                                 placeholder="ชื่อ"
                                 defaultValue={member?.name?.split(" ")[0] ?? ""}
                                 required
+                                readOnly={checkoutMode === "member" && !!member}
                               />
                             </div>
                           </div>
@@ -212,6 +315,7 @@ export default function CheckoutPage() {
                                 placeholder="นามสกุล"
                                 defaultValue={member?.name?.split(" ").slice(1).join(" ") ?? ""}
                                 required
+                                readOnly={checkoutMode === "member" && !!member}
                               />
                             </div>
                           </div>
@@ -226,6 +330,7 @@ export default function CheckoutPage() {
                                 placeholder="อีเมล"
                                 defaultValue={member?.email ?? ""}
                                 required
+                                readOnly={checkoutMode === "member" && !!member}
                               />
                             </div>
                           </div>
@@ -240,6 +345,7 @@ export default function CheckoutPage() {
                                 placeholder="เบอร์โทร"
                                 defaultValue={member?.phone ?? ""}
                                 required
+                                readOnly={checkoutMode === "member" && !!member}
                               />
                             </div>
                           </div>
@@ -305,21 +411,21 @@ export default function CheckoutPage() {
                           </li>
                         ) : null}
 
-                        {loyaltyCheckout.pointsDiscount > 0 ? (
+                        {isMemberCheckout && loyaltyCheckout.pointsDiscount > 0 ? (
                           <li className="tp-order-info-list-subtotal">
                             <span>ส่วนลดแต้ม ({loyaltyCheckout.pointsUsed} แต้ม)</span>
                             <span className="text-success">−฿{formatBaht(loyaltyCheckout.pointsDiscount)}</span>
                           </li>
                         ) : null}
 
-                        {member && loyaltySettings.redeem_enabled ? (
+                        {isMemberCheckout && loyaltySettings.redeem_enabled ? (
                           <li className="tp-order-info-list-subtotal">
-                            <span>ใช้แต้ม (คงเหลือ {member.points})</span>
+                            <span>ใช้แต้ม (คงเหลือ {member?.points ?? 0})</span>
                             <input
                               type="number"
                               min={0}
                               step={loyaltySettings.redeem_points_per_baht}
-                              max={member.points}
+                              max={member?.points ?? 0}
                               value={pointsToRedeem || ""}
                               onChange={(event) => setPointsToRedeem(Number(event.target.value) || 0)}
                               className="form-control form-control-sm text-end"
@@ -329,7 +435,7 @@ export default function CheckoutPage() {
                           </li>
                         ) : null}
 
-                        {member && loyaltySettings.enabled ? (
+                        {isMemberCheckout && loyaltySettings.enabled ? (
                           <li className="tp-order-info-list-subtotal">
                             <span>แต้มที่จะได้รับ</span>
                             <span>+{calcEarnPoints(totals.total, loyaltySettings)} แต้ม</span>
@@ -389,11 +495,18 @@ export default function CheckoutPage() {
                     </div>
 
                     {error ? <p className="text-danger mt-20 mb-0">{error}</p> : null}
-                    {success ? <p className="text-success mt-20 mb-0">{success}</p> : null}
 
                     <div className="tp-checkout-btn-wrapper">
-                      <button type="submit" className="tp-checkout-btn w-100" disabled={loading || !member}>
-                        {loading ? "กำลังสั่งซื้อ..." : "Place Order"}
+                      <button
+                        type="submit"
+                        className="tp-checkout-btn w-100"
+                        disabled={loading || (checkoutMode === "member" && !member)}
+                      >
+                        {loading
+                          ? "กำลังสั่งซื้อ..."
+                          : checkoutMode === "guest"
+                            ? "สั่งซื้อ (ไม่สมัครสมาชิก)"
+                            : "Place Order"}
                       </button>
                     </div>
                   </div>

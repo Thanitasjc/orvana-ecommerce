@@ -31,8 +31,19 @@ export type Order = {
   channel: string;
   created_at?: string;
   customer?: OrderCustomer | null;
+  guest_name?: string | null;
+  guest_email?: string | null;
+  guest_phone?: string | null;
+  shipping_address?: string | null;
+  shipping_province?: string | null;
+  shipping_postcode?: string | null;
+  shipping_notes?: string | null;
   items?: OrderItem[];
 };
+
+export function orderCustomerName(order: Order) {
+  return order.customer?.name ?? order.guest_name ?? "Walk-in";
+}
 
 export function orderStatusClass(status: string, paymentStatus: string) {
   const value = status.toLowerCase();

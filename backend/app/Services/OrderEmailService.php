@@ -13,17 +13,23 @@ class OrderEmailService
     {
         $order->loadMissing(['items', 'customer']);
 
-        $customer = $order->customer;
-        if (! $customer?->email || $order->channel !== 'Online Store') {
+        if ($order->channel !== 'Online Store') {
+            return;
+        }
+
+        $email = $order->customer?->email ?? $order->guest_email;
+        $name = $order->customer?->name ?? $order->guest_name;
+
+        if (! $email || ! $name) {
             return;
         }
 
         try {
-            Mail::to($customer->email)->send(new OrderConfirmationMail($order, $customer->fresh()));
+            Mail::to($email)->send(new OrderConfirmationMail($order, $name));
         } catch (\Throwable $exception) {
             Log::warning('Order confirmation email failed', [
                 'order_id' => $order->id,
-                'email' => $customer->email,
+                'email' => $email,
                 'message' => $exception->getMessage(),
             ]);
         }

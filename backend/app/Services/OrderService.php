@@ -51,6 +51,7 @@ class OrderService
 
     /**
      * @param  array<int, array{variation_id: int, quantity: int}>  $items
+     * @param  array<string, string|null>|null  $guestDetails
      */
     public function checkout(
         array $items,
@@ -64,8 +65,9 @@ class OrderService
         int $shippingDiscount = 0,
         ?string $posSessionId = null,
         int $pointsToRedeem = 0,
+        ?array $guestDetails = null,
     ): Order {
-        $order = DB::transaction(function () use ($items, $channel, $discount, $paymentMethod, $customer, $staff, $coupon, $shippingFee, $shippingDiscount, $posSessionId, $pointsToRedeem) {
+        $order = DB::transaction(function () use ($items, $channel, $discount, $paymentMethod, $customer, $staff, $coupon, $shippingFee, $shippingDiscount, $posSessionId, $pointsToRedeem, $guestDetails) {
             $built = $this->buildLineItems($items);
             $payableAfterCoupon = max(0, $built['total'] - $discount);
 
@@ -84,6 +86,13 @@ class OrderService
                 'order_number' => $this->generateOrderNumber($channel),
                 'channel' => $channel,
                 'customer_id' => $customer?->id,
+                'guest_name' => $guestDetails['name'] ?? null,
+                'guest_email' => $guestDetails['email'] ?? null,
+                'guest_phone' => $guestDetails['phone'] ?? null,
+                'shipping_address' => $guestDetails['address'] ?? null,
+                'shipping_province' => $guestDetails['province'] ?? null,
+                'shipping_postcode' => $guestDetails['postcode'] ?? null,
+                'shipping_notes' => $guestDetails['notes'] ?? null,
                 'staff_id' => $staff?->id,
                 'coupon_id' => $coupon?->id,
                 'coupon_code' => $coupon?->code,

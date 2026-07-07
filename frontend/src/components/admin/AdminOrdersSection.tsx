@@ -10,6 +10,7 @@ import {
   formatMoney,
   ORDER_STATUS_OPTIONS,
   orderProductTitle,
+  orderCustomerName,
   PAYMENT_STATUS_OPTIONS,
   type Order,
 } from "@/lib/orders/types";
@@ -196,7 +197,7 @@ export function AdminOrdersSection() {
                           {order.channel === "Online Store" ? "เว็บ" : order.channel}
                         </span>
                       </td>
-                      <td className="px-3 py-3 text-slate-300">{order.customer?.name ?? "Walk-in"}</td>
+                      <td className="px-3 py-3 text-slate-300">{orderCustomerName(order)}</td>
                       <td className="px-3 py-3 text-slate-300">{orderProductTitle(order)}</td>
                       <td className="px-3 py-3">
                         <select

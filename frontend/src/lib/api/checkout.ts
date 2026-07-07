@@ -50,6 +50,39 @@ export type CheckoutOrder = {
   status: string;
 };
 
+export type GuestCheckoutDetails = {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  address: string;
+  province: string;
+  postcode: string;
+  notes?: string;
+};
+
+export async function submitGuestCheckout(
+  items: CartItem[],
+  paymentMethod: string,
+  details: GuestCheckoutDetails,
+  couponCode?: string | null,
+) {
+  const payload: Record<string, unknown> = {
+    items: await buildCheckoutItems(items),
+    payment_method: paymentMethod,
+    ...details,
+  };
+
+  if (couponCode) {
+    payload.coupon_code = couponCode;
+  }
+
+  return apiFetch<{ data: CheckoutOrder }>("/checkout/guest", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function submitMemberCheckout(
   items: CartItem[],
   paymentMethod: string,

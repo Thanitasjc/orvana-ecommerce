@@ -4,6 +4,7 @@ import type { Order } from "@/lib/orders/types";
 import {
   formatMoney,
   ORDER_STATUS_OPTIONS,
+  orderCustomerName,
   PAYMENT_STATUS_OPTIONS,
 } from "@/lib/orders/types";
 import { OrderTotalsSummary } from "@/components/orders/OrderTotalsSummary";
@@ -71,6 +72,23 @@ export function AdminOrderDetailModal({
                 <p className="text-slate-300">
                   <span className="text-slate-500">ลูกค้า:</span> {order.customer.name}
                   <span className="block text-xs text-slate-500">{order.customer.email}</span>
+                </p>
+              ) : order.guest_name ? (
+                <p className="text-slate-300">
+                  <span className="text-slate-500">ลูกค้า (Guest):</span> {orderCustomerName(order)}
+                  {order.guest_email ? (
+                    <span className="block text-xs text-slate-500">{order.guest_email}</span>
+                  ) : null}
+                  {order.guest_phone ? (
+                    <span className="block text-xs text-slate-500">{order.guest_phone}</span>
+                  ) : null}
+                  {order.shipping_address ? (
+                    <span className="mt-1 block text-xs text-slate-500">
+                      {order.shipping_address}
+                      {order.shipping_province ? `, ${order.shipping_province}` : ""}
+                      {order.shipping_postcode ? ` ${order.shipping_postcode}` : ""}
+                    </span>
+                  ) : null}
                 </p>
               ) : (
                 <p className="text-slate-300">

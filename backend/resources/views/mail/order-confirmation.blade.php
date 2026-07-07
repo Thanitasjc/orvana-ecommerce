@@ -18,10 +18,25 @@
                 </tr>
                 <tr>
                     <td style="padding:24px 28px;">
-                        <p style="margin:0 0 16px;font-size:15px;">สวัสดีคุณ {{ $customer->name }},</p>
+                        <p style="margin:0 0 16px;font-size:15px;">สวัสดีคุณ {{ $customerName }},</p>
                         <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#4b5563;">
                             เราได้รับคำสั่งซื้อของคุณแล้ว รายละเอียดด้านล่างนี้
                         </p>
+
+                        @if ($order->shipping_address)
+                            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:20px;">
+                                <tr>
+                                    <td style="padding:14px 16px;font-size:13px;line-height:1.6;color:#374151;">
+                                        <strong>ที่อยู่จัดส่ง</strong><br>
+                                        {{ $order->shipping_address }}<br>
+                                        {{ $order->shipping_province }} {{ $order->shipping_postcode }}
+                                        @if ($order->guest_phone)
+                                            <br>โทร: {{ $order->guest_phone }}
+                                        @endif
+                                    </td>
+                                </tr>
+                            </table>
+                        @endif
 
                         <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;margin-bottom:20px;">
                             <tr style="background:#f9fafb;">
@@ -68,14 +83,14 @@
                             </tr>
                         </table>
 
-                        @if ((int) $order->points_earned > 0)
+                        @if ((int) $order->points_earned > 0 && $order->customer)
                             <table width="100%" cellpadding="0" cellspacing="0" style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;margin-bottom:20px;">
                                 <tr>
                                     <td style="padding:16px 18px;">
                                         <p style="margin:0 0 6px;font-size:15px;font-weight:bold;color:#047857;">แต้มสะสมจากออเดอร์นี้</p>
                                         <p style="margin:0;font-size:22px;font-weight:bold;color:#059669;">+{{ (int) $order->points_earned }} แต้ม</p>
                                         <p style="margin:8px 0 0;font-size:13px;color:#065f46;">
-                                            คงเหลือทั้งหมด {{ (int) $customer->points }} แต้ม · ระดับ {{ $customer->tier }}
+                                            คงเหลือทั้งหมด {{ (int) $order->customer->points }} แต้ม · ระดับ {{ $order->customer->tier }}
                                         </p>
                                     </td>
                                 </tr>
@@ -83,9 +98,16 @@
                         @endif
 
                         <p style="margin:0;font-size:13px;color:#6b7280;line-height:1.6;">
-                            ดูรายละเอียดออเดอร์ได้ที่บัญชีสมาชิกของคุณ
-                            @if ($frontendUrl = config('app.frontend_url'))
-                                <br><a href="{{ rtrim($frontendUrl, '/') }}/account" style="color:#2563eb;">เปิดบัญชีสมาชิก</a>
+                            @if ($order->customer)
+                                ดูรายละเอียดออเดอร์ได้ที่บัญชีสมาชิกของคุณ
+                                @if ($frontendUrl = config('app.frontend_url'))
+                                    <br><a href="{{ rtrim($frontendUrl, '/') }}/account" style="color:#2563eb;">เปิดบัญชีสมาชิก</a>
+                                @endif
+                            @else
+                                เก็บเลขที่ออเดอร์ไว้สำหรับติดตามสถานะ
+                                @if ($frontendUrl = config('app.frontend_url'))
+                                    · <a href="{{ rtrim($frontendUrl, '/') }}/register" style="color:#2563eb;">สมัครสมาชิก</a> เพื่อสะสมแต้มในอนาคต
+                                @endif
                             @endif
                         </p>
                     </td>

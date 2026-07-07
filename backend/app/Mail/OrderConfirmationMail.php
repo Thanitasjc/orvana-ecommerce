@@ -2,9 +2,7 @@
 
 namespace App\Mail;
 
-use App\Models\Customer;
-use App\Models\Order;
-use Illuminate\Bus\Queueable;
+use App\Models\Order;use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -16,7 +14,7 @@ class OrderConfirmationMail extends Mailable
 
     public function __construct(
         public Order $order,
-        public Customer $customer,
+        public string $customerName,
     ) {}
 
     public function envelope(): Envelope
