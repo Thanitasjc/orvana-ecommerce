@@ -16,6 +16,7 @@ import { DEFAULT_LOYALTY_SETTINGS } from "@/lib/loyalty/types";
 import { formatBaht } from "@/lib/pricing/vat";
 import { calculateShopTotals } from "@/lib/shop/orderTotals";
 import { formatShippingMethodLabel } from "@/lib/shipping/api";
+import { fetchPaymentMethods, type PaymentMethod } from "@/lib/payment/api";
 
 type Member = {
   name: string;
@@ -26,19 +27,15 @@ type Member = {
 
 type CheckoutMode = "guest" | "member";
 
-const PAYMENT_OPTIONS = [
-  { id: "bank_transfer", label: "โอนเงินผ่านธนาคาร", value: "โอนเงินผ่านธนาคาร" },
-  { id: "cod", label: "เก็บเงินปลายทาง", value: "เก็บเงินปลายทาง" },
-  { id: "card", label: "บัตรเครดิต / เดบิต", value: "บัตรเครดิต" },
-] as const;
-
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, subtotal, setItems, appliedCoupon, removeCoupon, shippingMethods, shippingLoading, selectedShippingMethodId, setSelectedShippingMethodId, shippingFee } = useCart();
   const [member, setMember] = useState<Member | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [checkoutMode, setCheckoutMode] = useState<CheckoutMode>("guest");
-  const [paymentMethod, setPaymentMethod] = useState<string>(PAYMENT_OPTIONS[2].value);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [paymentLoading, setPaymentLoading] = useState(true);
+  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<number | null>(null);
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +44,13 @@ export default function CheckoutPage() {
   const [pointsToRedeem, setPointsToRedeem] = useState(0);
 
   const isMemberCheckout = checkoutMode === "member" && !!member;
+  const selectedPaymentMethod = useMemo(
+    () => paymentMethods.find((method) => method.id === selectedPaymentMethodId) ?? null,
+    [paymentMethods, selectedPaymentMethodId],
+  );
+  const bankConfig = selectedPaymentMethod?.type === "bank_transfer"
+    ? (selectedPaymentMethod.config as { bank_name?: string; account_name?: string; account_number?: string } | null)
+    : null;
   const couponDiscount = appliedCoupon?.discount ?? 0;
   const loyaltyCheckout = calcLoyaltyCheckout(
     subtotal,
@@ -71,6 +75,17 @@ export default function CheckoutPage() {
     fetchLoyaltySettings()
       .then((res) => setLoyaltySettings(res.data))
       .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    fetchPaymentMethods("online")
+      .then((res) => {
+        const methods = (res.data ?? []).filter((method) => !method.is_gateway || method.omise_enabled);
+        setPaymentMethods(methods);
+        setSelectedPaymentMethodId((current) => current ?? methods[0]?.id ?? null);
+      })
+      .catch(console.error)
+      .finally(() => setPaymentLoading(false));
   }, []);
 
   useEffect(() => {
@@ -109,6 +124,11 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (!selectedPaymentMethodId) {
+      setError("กรุณาเลือกวิธีชำระเงิน");
+      return;
+    }
+
     if (checkoutMode === "member" && !member) {
       setError("กรุณาเข้าสู่ระบบสมาชิก หรือเลือกชำระแบบไม่สมัคร");
       return;
@@ -127,26 +147,28 @@ export default function CheckoutPage() {
 
         const res = await submitMemberCheckout(
           items,
-          paymentMethod,
           token,
           selectedShippingMethodId,
+          selectedPaymentMethodId,
           appliedCoupon?.code,
           loyaltyCheckout.pointsUsed,
         );
         setItems([]);
         removeCoupon();
-        setSuccess(`สั่งซื้อสำเร็จ — เลขที่ออเดอร์ ${res.data.order_number}`);
-        window.setTimeout(() => router.push("/account"), 1800);
+        router.push(
+          `/checkout/pay/${res.data.order_number}?email=${encodeURIComponent(member.email)}`,
+        );
         return;
       }
 
+      const guestEmail = String(form.get("email") ?? "").trim();
+
       const res = await submitGuestCheckout(
         items,
-        paymentMethod,
         {
           first_name: String(form.get("first_name") ?? "").trim(),
           last_name: String(form.get("last_name") ?? "").trim(),
-          email: String(form.get("email") ?? "").trim(),
+          email: guestEmail,
           phone: String(form.get("phone") ?? "").trim(),
           address: String(form.get("address") ?? "").trim(),
           province: String(form.get("province") ?? "").trim(),
@@ -154,16 +176,16 @@ export default function CheckoutPage() {
           notes: String(form.get("notes") ?? "").trim() || undefined,
         },
         selectedShippingMethodId,
+        selectedPaymentMethodId,
         appliedCoupon?.code,
       );
       setItems([]);
       removeCoupon();
-      setSuccess(
-        `สั่งซื้อสำเร็จ — เลขที่ออเดอร์ ${res.data.order_number} เราส่งอีเมลยืนยันให้แล้ว`,
-      );
+      router.push(`/checkout/pay/${res.data.order_number}?email=${encodeURIComponent(guestEmail)}`);
     } catch (err: unknown) {
       const apiErr = err as { message?: string; errors?: Record<string, string[]> };
       const message =
+        apiErr.errors?.payment_method_id?.[0] ??
         apiErr.errors?.points_to_redeem?.[0] ??
         apiErr.errors?.shipping_method_id?.[0] ??
         apiErr.errors?.coupon_code?.[0] ??
@@ -487,19 +509,43 @@ export default function CheckoutPage() {
                     </div>
 
                     <div className="tp-checkout-payment">
-                      {PAYMENT_OPTIONS.map((option) => (
-                        <div className="tp-checkout-payment-item" key={option.id}>
-                          <input
-                            id={option.id}
-                            type="radio"
-                            name="payment"
-                            checked={paymentMethod === option.value}
-                            onChange={() => setPaymentMethod(option.value)}
-                          />
-                          <label htmlFor={option.id}>{option.label}</label>
-                        </div>
-                      ))}
+                      {paymentLoading ? (
+                        <p className="text-sm text-slate-500">กำลังโหลดวิธีชำระ...</p>
+                      ) : paymentMethods.length === 0 ? (
+                        <p className="text-sm text-danger">ไม่มีวิธีชำระเงิน</p>
+                      ) : (
+                        paymentMethods.map((method) => (
+                          <div className="tp-checkout-payment-item" key={method.id}>
+                            <input
+                              id={`payment_${method.id}`}
+                              type="radio"
+                              name="payment"
+                              checked={selectedPaymentMethodId === method.id}
+                              onChange={() => setSelectedPaymentMethodId(method.id)}
+                            />
+                            <label htmlFor={`payment_${method.id}`}>
+                              {method.name}
+                              {method.description ? (
+                                <span className="block text-xs text-slate-500">{method.description}</span>
+                              ) : null}
+                            </label>
+                          </div>
+                        ))
+                      )}
                     </div>
+
+                    {bankConfig?.bank_name ? (
+                      <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                        <p className="font-semibold">ข้อมูลโอน (หลังสั่งซื้อ)</p>
+                        <p>{bankConfig.bank_name}</p>
+                        <p>{bankConfig.account_name}</p>
+                        <p>{bankConfig.account_number}</p>
+                      </div>
+                    ) : null}
+
+                    {selectedPaymentMethod?.instructions ? (
+                      <p className="mt-3 text-xs text-slate-500">{selectedPaymentMethod.instructions}</p>
+                    ) : null}
 
                     <div className="tp-checkout-agree">
                       <div className="tp-checkout-option">
@@ -519,7 +565,12 @@ export default function CheckoutPage() {
                       <button
                         type="submit"
                         className="tp-checkout-btn w-100"
-                        disabled={loading || (checkoutMode === "member" && !member) || !selectedShippingMethodId}
+                        disabled={
+                          loading ||
+                          (checkoutMode === "member" && !member) ||
+                          !selectedShippingMethodId ||
+                          !selectedPaymentMethodId
+                        }
                       >
                         {loading
                           ? "กำลังสั่งซื้อ..."

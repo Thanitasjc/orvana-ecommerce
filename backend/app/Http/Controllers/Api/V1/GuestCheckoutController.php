@@ -6,6 +6,7 @@ use App\Exceptions\InsufficientStockException;
 use App\Http\Controllers\Controller;
 use App\Services\CouponService;
 use App\Services\OrderService;
+use App\Services\PaymentMethodService;
 use App\Services\ShippingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,6 +18,8 @@ class GuestCheckoutController extends Controller
         private readonly OrderService $orders,
         private readonly CouponService $coupons,
         private readonly ShippingService $shipping,
+        private readonly PaymentMethodService $payments,
+        private readonly \App\Services\OrderPaymentService $orderPayments,
     ) {}
 
     public function store(Request $request): JsonResponse
@@ -25,7 +28,7 @@ class GuestCheckoutController extends Controller
             'items' => ['required', 'array', 'min:1'],
             'items.*.variation_id' => ['required', 'integer', 'exists:product_variations,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
-            'payment_method' => ['nullable', 'string', 'max:100'],
+            'payment_method_id' => ['required', 'integer', 'exists:payment_methods,id'],
             'coupon_code' => ['nullable', 'string', 'max:50'],
             'shipping_method_id' => ['required', 'integer', 'exists:shipping_methods,id'],
             'first_name' => ['required', 'string', 'max:100'],
@@ -42,6 +45,8 @@ class GuestCheckoutController extends Controller
         $shipping = $this->shipping->resolveForCheckout($validated['shipping_method_id'], $built['total']);
         $shippingFee = $shipping['fee'];
         $shippingMethod = $shipping['method'];
+        $paymentMethod = $this->payments->resolveForCheckout($validated['payment_method_id']);
+        $statuses = $this->payments->initialOrderStatuses($paymentMethod, 'Online Store');
 
         $discount = 0;
         $shippingDiscount = 0;
@@ -75,7 +80,7 @@ class GuestCheckoutController extends Controller
                 items: $validated['items'],
                 channel: 'Online Store',
                 discount: $discount,
-                paymentMethod: $validated['payment_method'] ?? 'บัตรเครดิต',
+                paymentMethod: $paymentMethod->name,
                 customer: null,
                 coupon: $coupon,
                 shippingFee: $shippingFee,
@@ -84,6 +89,9 @@ class GuestCheckoutController extends Controller
                 guestDetails: $guestDetails,
                 shippingMethodId: $shippingMethod->id,
                 shippingMethodName: $shippingMethod->name,
+                paymentMethodId: $paymentMethod->id,
+                orderStatus: $statuses['status'],
+                paymentStatus: $statuses['payment_status'],
             );
         } catch (InsufficientStockException $e) {
             return response()->json([
@@ -96,6 +104,8 @@ class GuestCheckoutController extends Controller
             throw $e;
         }
 
-        return response()->json(['data' => $order], 201);
+        return response()->json([
+            'data' => $this->orderPayments->formatPublicOrder($order),
+        ], 201);
     }
 }

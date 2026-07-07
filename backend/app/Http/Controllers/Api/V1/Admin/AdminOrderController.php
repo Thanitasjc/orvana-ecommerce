@@ -24,6 +24,7 @@ class AdminOrderController extends Controller
             'data' => $order->load([
                 'items',
                 'customer:id,name,email,phone',
+                'paymentMethod',
             ]),
         ]);
     }
@@ -50,7 +51,16 @@ class AdminOrderController extends Controller
                 $this->loyalty->reverseOrder($order);
             }
 
+            $wasPending = $order->payment_status === 'pending';
             $order->update($validated);
+
+            if (
+                $wasPending
+                && ($validated['payment_status'] ?? null) === 'paid'
+                && $order->customer_id
+            ) {
+                $this->loyalty->finalizePayment($order->fresh());
+            }
         });
 
         return response()->json([

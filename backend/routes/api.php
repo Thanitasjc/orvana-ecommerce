@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\V1\Admin\AdminLoyaltyController;
 use App\Http\Controllers\Api\V1\Admin\AdminOrderController;
 use App\Http\Controllers\Api\V1\Admin\AdminProductController;
+use App\Http\Controllers\Api\V1\Admin\AdminPaymentMethodController;
 use App\Http\Controllers\Api\V1\Admin\AdminShippingMethodController;
 use App\Http\Controllers\Api\V1\CouponController;
 use App\Http\Controllers\Api\V1\BlogController;
@@ -26,6 +27,8 @@ use App\Http\Controllers\Api\V1\Pos\PosCheckoutController;
 use App\Http\Controllers\Api\V1\Pos\PosCustomerController;
 use App\Http\Controllers\Api\V1\Pos\PosProductController;
 use App\Http\Controllers\Api\V1\ProductController;
+use App\Http\Controllers\Api\V1\OrderPaymentController;
+use App\Http\Controllers\Api\V1\PaymentMethodController;
 use App\Http\Controllers\Api\V1\ShippingController;
 use App\Http\Controllers\Api\V1\StaffAuthController;
 use Illuminate\Support\Facades\Route;
@@ -45,6 +48,11 @@ Route::prefix('v1')->group(function () {
   Route::post('loyalty/preview', [LoyaltyController::class, 'preview']);
   Route::post('checkout/guest', [GuestCheckoutController::class, 'store']);
   Route::get('shipping/methods', [ShippingController::class, 'index']);
+  Route::get('payment/methods', [PaymentMethodController::class, 'index']);
+  Route::get('checkout/orders/{orderNumber}', [OrderPaymentController::class, 'show']);
+  Route::post('checkout/orders/{orderNumber}/slip', [OrderPaymentController::class, 'uploadSlip']);
+  Route::post('checkout/orders/{orderNumber}/omise/charge', [OrderPaymentController::class, 'chargeOmise']);
+  Route::get('checkout/orders/{orderNumber}/omise/refresh', [OrderPaymentController::class, 'refreshOmise']);
 
   Route::prefix('member')->group(function () {
     Route::post('register', [MemberAuthController::class, 'register']);
@@ -125,6 +133,10 @@ Route::prefix('v1')->group(function () {
       Route::post('shipping-methods', [AdminShippingMethodController::class, 'store']);
       Route::patch('shipping-methods/{shippingMethod}', [AdminShippingMethodController::class, 'update']);
       Route::delete('shipping-methods/{shippingMethod}', [AdminShippingMethodController::class, 'destroy']);
+      Route::get('payment-methods', [AdminPaymentMethodController::class, 'index']);
+      Route::post('payment-methods', [AdminPaymentMethodController::class, 'store']);
+      Route::patch('payment-methods/{paymentMethod}', [AdminPaymentMethodController::class, 'update']);
+      Route::delete('payment-methods/{paymentMethod}', [AdminPaymentMethodController::class, 'destroy']);
       Route::get('customers/{customer}/loyalty-transactions', [AdminLoyaltyController::class, 'customerTransactions']);
     });
 });

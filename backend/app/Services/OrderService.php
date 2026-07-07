@@ -68,8 +68,11 @@ class OrderService
         ?array $guestDetails = null,
         ?int $shippingMethodId = null,
         ?string $shippingMethodName = null,
+        ?int $paymentMethodId = null,
+        ?string $orderStatus = null,
+        ?string $paymentStatus = null,
     ): Order {
-        $order = DB::transaction(function () use ($items, $channel, $discount, $paymentMethod, $customer, $staff, $coupon, $shippingFee, $shippingDiscount, $posSessionId, $pointsToRedeem, $guestDetails, $shippingMethodId, $shippingMethodName) {
+        $order = DB::transaction(function () use ($items, $channel, $discount, $paymentMethod, $customer, $staff, $coupon, $shippingFee, $shippingDiscount, $posSessionId, $pointsToRedeem, $guestDetails, $shippingMethodId, $shippingMethodName, $paymentMethodId, $orderStatus, $paymentStatus) {
             $built = $this->buildLineItems($items);
             $payableAfterCoupon = max(0, $built['total'] - $discount);
 
@@ -109,8 +112,9 @@ class OrderService
                 'total' => $finalTotal,
                 'profit' => $finalProfit,
                 'payment_method' => $paymentMethod,
-                'status' => 'completed',
-                'payment_status' => 'paid',
+                'payment_method_id' => $paymentMethodId,
+                'status' => $orderStatus ?? 'completed',
+                'payment_status' => $paymentStatus ?? 'paid',
             ]);
 
             foreach ($built['lineItems'] as $line) {
@@ -126,7 +130,8 @@ class OrderService
                 ]);
             }
 
-            $this->loyalty->processOrder($customer, $order, $pointsRedeemed);
+            $awardEarn = ($paymentStatus ?? 'paid') === 'paid';
+            $this->loyalty->processOrder($customer, $order, $pointsRedeemed, $awardEarn);
 
             if ($coupon) {
                 $coupon->increment('used_count');
@@ -148,7 +153,7 @@ class OrderService
                 ]);
             }
 
-            return $order->fresh()->load(['items', 'customer']);
+            return $order->fresh()->load(['items', 'customer', 'paymentMethod']);
         });
 
         $this->orderEmail->sendConfirmation($order);

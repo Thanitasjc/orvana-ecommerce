@@ -73,6 +73,14 @@ export function AdminOrderDetailModal({
                   <span className="text-slate-500">จัดส่ง:</span> {order.shipping_method_name}
                 </p>
               ) : null}
+              {order.payment_slip_url ? (
+                <p className="text-slate-300">
+                  <span className="text-slate-500">สลิป:</span>{" "}
+                  <a href={order.payment_slip_url} target="_blank" rel="noreferrer" className="text-blue-400 underline">
+                    ดูสลิปโอนเงิน
+                  </a>
+                </p>
+              ) : null}
               {order.customer ? (
                 <p className="text-slate-300">
                   <span className="text-slate-500">ลูกค้า:</span> {order.customer.name}

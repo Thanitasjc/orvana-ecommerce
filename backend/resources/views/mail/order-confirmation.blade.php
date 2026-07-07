@@ -83,6 +83,32 @@
                             </tr>
                         </table>
 
+                        @php($order->loadMissing('paymentMethod'))
+                        @if ($order->payment_method)
+                            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;margin-bottom:20px;">
+                                <tr>
+                                    <td style="padding:16px 18px;font-size:13px;line-height:1.6;color:#92400e;">
+                                        <strong>วิธีชำระเงิน:</strong> {{ $order->payment_method }}<br>
+                                        <strong>สถานะ:</strong> {{ $order->payment_status === 'paid' ? 'ชำระแล้ว' : 'รอชำระเงิน' }}<br>
+                                        @if ($order->payment_status !== 'paid' && $order->paymentMethod?->instructions)
+                                            {{ $order->paymentMethod->instructions }}<br>
+                                        @endif
+                                        @if ($order->paymentMethod?->type === 'bank_transfer')
+                                            @php($bank = $order->paymentMethod->config ?? [])
+                                            @if (!empty($bank['bank_name']))
+                                                ธนาคาร: {{ $bank['bank_name'] }}<br>
+                                                ชื่อบัญชี: {{ $bank['account_name'] ?? '-' }}<br>
+                                                เลขบัญชี: {{ $bank['account_number'] ?? '-' }}<br>
+                                            @endif
+                                        @endif
+                                        @if ($frontendUrl = config('app.frontend_url'))
+                                            <a href="{{ rtrim($frontendUrl, '/') }}/checkout/pay/{{ $order->order_number }}?email={{ urlencode($order->guest_email ?? $order->customer?->email ?? '') }}" style="color:#b45309;font-weight:bold;">เปิดหน้าชำระเงิน / อัปโหลดสลิป</a>
+                                        @endif
+                                    </td>
+                                </tr>
+                            </table>
+                        @endif
+
                         @if ((int) $order->points_earned > 0 && $order->customer)
                             <table width="100%" cellpadding="0" cellspacing="0" style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;margin-bottom:20px;">
                                 <tr>

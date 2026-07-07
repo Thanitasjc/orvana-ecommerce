@@ -10,6 +10,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { href: "/admin/categories", label: "หมวดหมู่", icon: "🏷️" },
   { href: "/admin/coupons", label: "คูปอง", icon: "🎟️" },
   { href: "/admin/shipping", label: "จัดส่ง", icon: "🚚" },
+  { href: "/admin/payments", label: "ชำระเงิน", icon: "💳" },
   { href: "/admin/loyalty", label: "แต้มสะสม", icon: "⭐" },
   { href: "/admin/orders", label: "ออเดอร์", icon: "🧾" },
   { href: "/admin/members", label: "สมาชิก (CRM)", icon: "👥" },

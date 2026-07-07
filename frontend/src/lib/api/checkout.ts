@@ -1,5 +1,6 @@
 import type { CartItem } from "@/components/shop/cart/CartProvider";
 import { apiFetch } from "@/lib/api/client";
+import type { PublicOrderPayment } from "@/lib/payment/api";
 
 type ProductVariation = { id: number };
 type ProductDetail = { variations?: ProductVariation[] | null };
@@ -42,13 +43,7 @@ export async function buildCheckoutItems(items: CartItem[]) {
   }));
 }
 
-export type CheckoutOrder = {
-  id: number;
-  order_number: string;
-  total: number;
-  channel: string;
-  status: string;
-};
+export type CheckoutOrder = PublicOrderPayment;
 
 export type GuestCheckoutDetails = {
   first_name: string;
@@ -63,15 +58,15 @@ export type GuestCheckoutDetails = {
 
 export async function submitGuestCheckout(
   items: CartItem[],
-  paymentMethod: string,
   details: GuestCheckoutDetails,
   shippingMethodId: number,
+  paymentMethodId: number,
   couponCode?: string | null,
 ) {
   const payload: Record<string, unknown> = {
     items: await buildCheckoutItems(items),
-    payment_method: paymentMethod,
     shipping_method_id: shippingMethodId,
+    payment_method_id: paymentMethodId,
     ...details,
   };
 
@@ -87,16 +82,16 @@ export async function submitGuestCheckout(
 
 export async function submitMemberCheckout(
   items: CartItem[],
-  paymentMethod: string,
   token: string,
   shippingMethodId: number,
+  paymentMethodId: number,
   couponCode?: string | null,
   pointsToRedeem?: number,
 ) {
   const payload: Record<string, unknown> = {
     items: await buildCheckoutItems(items),
-    payment_method: paymentMethod,
     shipping_method_id: shippingMethodId,
+    payment_method_id: paymentMethodId,
   };
 
   if (couponCode) {

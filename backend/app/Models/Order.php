@@ -34,15 +34,33 @@ class Order extends Model
         'total',
         'profit',
         'payment_method',
+        'payment_method_id',
+        'payment_slip_path',
+        'omise_charge_id',
+        'payment_metadata',
         'status',
         'payment_status',
+    ];
+
+    protected $appends = [
+        'payment_slip_url',
     ];
 
     protected function casts(): array
     {
         return [
             'loyalty_reversed_at' => 'datetime',
+            'payment_metadata' => 'array',
         ];
+    }
+
+    public function getPaymentSlipUrlAttribute(): ?string
+    {
+        if (! $this->payment_slip_path) {
+            return null;
+        }
+
+        return \Illuminate\Support\Facades\Storage::disk('public')->url($this->payment_slip_path);
     }
 
     public function customer(): BelongsTo
@@ -68,5 +86,10 @@ class Order extends Model
     public function shippingMethod(): BelongsTo
     {
         return $this->belongsTo(ShippingMethod::class);
+    }
+
+    public function paymentMethod(): BelongsTo
+    {
+        return $this->belongsTo(PaymentMethod::class);
     }
 }

@@ -39,6 +39,7 @@ export type Order = {
   shipping_postcode?: string | null;
   shipping_notes?: string | null;
   shipping_method_name?: string | null;
+  payment_slip_url?: string | null;
   items?: OrderItem[];
 };
 

@@ -47,7 +47,7 @@ class LoyaltyService
         return $result;
     }
 
-    public function processOrder(?Customer $customer, Order $order, int $pointsRedeemed = 0): void
+    public function processOrder(?Customer $customer, Order $order, int $pointsRedeemed = 0, bool $awardEarn = true): void
     {
         if (! $customer) {
             return;
@@ -68,6 +68,52 @@ class LoyaltyService
             );
         }
 
+        $earnedPoints = 0;
+
+        if ($awardEarn) {
+            $earnedPoints = $this->settings->calculateEarnPoints($order->total);
+
+            if ($earnedPoints > 0) {
+                $balance += $earnedPoints;
+                $this->logTransaction(
+                    $customer,
+                    $order,
+                    'earn',
+                    $earnedPoints,
+                    $balance,
+                    "สะสมแต้มออเดอร์ {$order->order_number}",
+                );
+            }
+
+            $newTotalSpent = $customer->total_spent + $order->total;
+
+            $customer->update([
+                'points' => $balance,
+                'total_spent' => $newTotalSpent,
+                'tier' => $this->settings->resolveTier($newTotalSpent),
+            ]);
+        } else {
+            $customer->update(['points' => $balance]);
+        }
+
+        $order->update([
+            'points_earned' => $earnedPoints,
+        ]);
+    }
+
+    public function finalizePayment(Order $order): void
+    {
+        if (! $order->customer_id || (int) $order->points_earned > 0) {
+            return;
+        }
+
+        $customer = Customer::query()->find($order->customer_id);
+        if (! $customer) {
+            return;
+        }
+
+        $customer->refresh();
+        $balance = $customer->points;
         $earnedPoints = $this->settings->calculateEarnPoints($order->total);
 
         if ($earnedPoints > 0) {
@@ -90,9 +136,7 @@ class LoyaltyService
             'tier' => $this->settings->resolveTier($newTotalSpent),
         ]);
 
-        $order->update([
-            'points_earned' => $earnedPoints,
-        ]);
+        $order->update(['points_earned' => $earnedPoints]);
     }
 
     public function reverseOrder(Order $order): bool

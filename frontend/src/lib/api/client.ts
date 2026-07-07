@@ -37,13 +37,13 @@ export async function apiFetch<T>(
 export async function apiUpload<T>(
   path: string,
   formData: FormData,
-  token: string,
+  token?: string | null,
 ): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     method: "POST",
     headers: {
       Accept: "application/json",
-      Authorization: `Bearer ${token}`,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: formData,
   });
