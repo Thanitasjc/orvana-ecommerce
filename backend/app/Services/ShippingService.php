@@ -27,7 +27,7 @@ class ShippingService
     public function listForCheckout(int $subtotal): Collection
     {
         return ShippingMethod::query()
-            ->where('is_active', true)
+            ->active()
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get()
@@ -39,7 +39,7 @@ class ShippingService
     public function resolveForCheckout(int $shippingMethodId, int $subtotal): array
     {
         $method = ShippingMethod::query()
-            ->where('is_active', true)
+            ->active()
             ->find($shippingMethodId);
 
         if (! $method) {
