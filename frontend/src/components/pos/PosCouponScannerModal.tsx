@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { BrowserCodeReader, BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
+import { NotFoundException } from "@zxing/library";
 
 type PosCouponScannerModalProps = {
   open: boolean;
@@ -25,17 +27,19 @@ export function normalizeScannedCouponCode(raw: string): string {
 
 export function PosCouponScannerModal({ open, onClose, onScan }: PosCouponScannerModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  const controlsRef = useRef<IScannerControls | null>(null);
   const scanLockRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
-  const [supported, setSupported] = useState(true);
+  const [cameraReady, setCameraReady] = useState(false);
 
   const stopCamera = useCallback(() => {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
+    controlsRef.current?.stop();
+    controlsRef.current = null;
     if (videoRef.current) {
-      videoRef.current.srcObject = null;
+      BrowserCodeReader.cleanVideoSource(videoRef.current);
     }
+    BrowserCodeReader.releaseAllStreams();
+    setCameraReady(false);
   }, []);
 
   const handleDetected = useCallback(
@@ -61,65 +65,47 @@ export function PosCouponScannerModal({ open, onClose, onScan }: PosCouponScanne
       return;
     }
 
-    if (typeof window === "undefined" || !("BarcodeDetector" in window)) {
-      setSupported(false);
-      setError("เบราว์เซอร์นี้ไม่รองรับสแกนจากกล้อง — ใช้ปืนยิงบาร์โค้ดหรือพิมพ์รหัสแทน");
+    if (typeof window === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setError("เบราว์เซอร์นี้ไม่รองรับกล้อง — ใช้ปืนยิงบาร์โค้ดหรือพิมพ์รหัสแทน");
       return;
     }
 
-    setSupported(true);
     let cancelled = false;
-    let frameId = 0;
+    const reader = new BrowserMultiFormatReader();
 
     async function startScanner() {
+      const video = videoRef.current;
+      if (!video) return;
+
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" } },
-          audio: false,
-        });
+        const controls = await reader.decodeFromConstraints(
+          { video: { facingMode: { ideal: "environment" } } },
+          video,
+          (result, err) => {
+            if (cancelled || scanLockRef.current) return;
+
+            if (result) {
+              handleDetected(result.getText());
+              return;
+            }
+
+            if (err && !(err instanceof NotFoundException)) {
+              console.debug("Barcode scan frame error:", err);
+            }
+          },
+        );
 
         if (cancelled) {
-          stream.getTracks().forEach((track) => track.stop());
+          controls.stop();
           return;
         }
 
-        streamRef.current = stream;
-        const video = videoRef.current;
-        if (!video) return;
-
-        video.srcObject = stream;
-        await video.play();
-
-        const Detector = window.BarcodeDetector;
-        if (!Detector) return;
-
-        const detector = new Detector({
-          formats: ["qr_code", "code_128", "code_39", "ean_13", "ean_8"],
-        });
-
-        const tick = async () => {
-          if (cancelled || !videoRef.current || videoRef.current.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-            frameId = window.requestAnimationFrame(() => void tick());
-            return;
-          }
-
-          try {
-            const barcodes = await detector.detect(videoRef.current);
-            const match = barcodes[0]?.rawValue;
-            if (match) {
-              handleDetected(match);
-              return;
-            }
-          } catch {
-            // ignore single-frame detection errors
-          }
-
-          frameId = window.requestAnimationFrame(() => void tick());
-        };
-
-        frameId = window.requestAnimationFrame(() => void tick());
+        controlsRef.current = controls;
+        setCameraReady(true);
       } catch {
-        setError("ไม่สามารถเปิดกล้องได้ — อนุญาตการใช้กล้องในเบราว์เซอร์ หรือใช้ปืนยิงบาร์โค้ดแทน");
+        if (!cancelled) {
+          setError("ไม่สามารถเปิดกล้องได้ — อนุญาตการใช้กล้องในเบราว์เซอร์ หรือใช้ปืนยิงบาร์โค้ดแทน");
+        }
       }
     }
 
@@ -127,7 +113,6 @@ export function PosCouponScannerModal({ open, onClose, onScan }: PosCouponScanne
 
     return () => {
       cancelled = true;
-      window.cancelAnimationFrame(frameId);
       stopCamera();
     };
   }, [handleDetected, open, stopCamera]);
@@ -148,16 +133,26 @@ export function PosCouponScannerModal({ open, onClose, onScan }: PosCouponScanne
         </div>
 
         <div className="p-4">
-          {supported ? (
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-black">
-              <video ref={videoRef} className="aspect-[4/3] w-full object-cover" muted playsInline />
+          {!error ? (
+            <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-black">
+              <video ref={videoRef} className="aspect-[4/3] w-full object-cover" muted playsInline autoPlay />
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <div className="h-40 w-40 rounded-lg border-2 border-white/70 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />
+              </div>
+              {!cameraReady ? (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/60 text-sm text-white">
+                  กำลังเปิดกล้อง...
+                </div>
+              ) : null}
             </div>
           ) : null}
 
-          {error ? <p className="mt-3 text-sm text-rose-600">{error}</p> : null}
+          {error ? <p className="text-sm text-rose-600">{error}</p> : null}
 
-          {!error && supported ? (
-            <p className="mt-3 text-center text-xs text-slate-500">สแกนสำเร็จแล้วจะใช้คูปองทันที</p>
+          {!error ? (
+            <p className="mt-3 text-center text-xs text-slate-500">
+              {cameraReady ? "สแกนสำเร็จแล้วจะใช้คูปองทันที" : "รออนุญาตการใช้กล้องจากเบราว์เซอร์"}
+            </p>
           ) : null}
         </div>
       </div>
