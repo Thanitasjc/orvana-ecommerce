@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -11,6 +12,16 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         apiPrefix: 'api',
+        then: function () {
+            Route::get('/', function () {
+                return response()->json([
+                    'ok' => true,
+                    'service' => 'Aesthete API',
+                    'health' => '/api/v1/health',
+                    'payment_methods' => '/api/v1/payment/methods',
+                ]);
+            });
+        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
