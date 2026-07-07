@@ -15,6 +15,8 @@ import {
   orderViewLabel,
   type Order,
 } from "@/lib/orders/types";
+import { fetchMemberLoyaltyTransactions } from "@/lib/loyalty/api";
+import type { LoyaltyTransaction } from "@/lib/loyalty/types";
 
 type Member = {
   id: number;
@@ -27,13 +29,14 @@ type Member = {
   total_spent: number;
 };
 
-type TabKey = "profile" | "information" | "address" | "order" | "notification" | "password";
+type TabKey = "profile" | "information" | "address" | "order" | "points" | "notification" | "password";
 
 const TABS: { key: TabKey; label: string; icon: string }[] = [
   { key: "profile", label: "Profile", icon: "fa-regular fa-user-pen" },
   { key: "information", label: "Information", icon: "fa-regular fa-circle-info" },
   { key: "address", label: "Address", icon: "fa-light fa-location-dot" },
   { key: "order", label: "My Orders", icon: "fa-light fa-clipboard-list-check" },
+  { key: "points", label: "แต้มสะสม", icon: "fa-regular fa-star" },
   { key: "notification", label: "Notification", icon: "fa-regular fa-bell" },
   { key: "password", label: "Change Password", icon: "fa-regular fa-lock" },
 ];
@@ -47,6 +50,8 @@ export default function AccountPage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("profile");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [loyaltyTransactions, setLoyaltyTransactions] = useState<LoyaltyTransaction[]>([]);
+  const [loyaltyLoading, setLoyaltyLoading] = useState(false);
 
   useEffect(() => {
     const token = getCookie(MEMBER_TOKEN_KEY);
@@ -63,6 +68,18 @@ export default function AccountPage() {
       })
       .catch(() => setError("โหลดข้อมูลไม่สำเร็จ"));
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== "points") return;
+    const token = getCookie(MEMBER_TOKEN_KEY);
+    if (!token) return;
+
+    setLoyaltyLoading(true);
+    fetchMemberLoyaltyTransactions(token)
+      .then((res) => setLoyaltyTransactions(res.data ?? []))
+      .catch(() => setLoyaltyTransactions([]))
+      .finally(() => setLoyaltyLoading(false));
+  }, [activeTab]);
 
   const orderCount = orders.length;
 
@@ -431,6 +448,57 @@ export default function AccountPage() {
                           )}
                         </tbody>
                       </table>
+                    </div>
+                  ) : null}
+
+                  {activeTab === "points" ? (
+                    <div className="profile__ticket">
+                      <div className="profile__ticket-header mb-30">
+                        <h3 className="profile__ticket-title">ประวัติแต้มสะสม</h3>
+                        <p className="mb-0">
+                          คงเหลือ <strong>{member.points}</strong> แต้ม · ระดับ {member.tier}
+                        </p>
+                      </div>
+                      {loyaltyLoading ? (
+                        <p>กำลังโหลด...</p>
+                      ) : loyaltyTransactions.length === 0 ? (
+                        <p className="text-muted">ยังไม่มีประวัติแต้ม</p>
+                      ) : (
+                        <div className="table-responsive">
+                          <table className="table">
+                            <thead>
+                              <tr>
+                                <th>วันที่</th>
+                                <th>รายการ</th>
+                                <th>แต้ม</th>
+                                <th>คงเหลือ</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {loyaltyTransactions.map((tx) => (
+                                <tr key={tx.id}>
+                                  <td>
+                                    {tx.created_at
+                                      ? new Date(tx.created_at).toLocaleString("th-TH")
+                                      : "—"}
+                                  </td>
+                                  <td>
+                                    {tx.description ?? tx.type}
+                                    {tx.order?.order_number ? (
+                                      <span className="d-block text-muted small">{tx.order.order_number}</span>
+                                    ) : null}
+                                  </td>
+                                  <td className={tx.points >= 0 ? "text-success" : "text-danger"}>
+                                    {tx.points >= 0 ? "+" : ""}
+                                    {tx.points}
+                                  </td>
+                                  <td>{tx.balance_after}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
                   ) : null}
 

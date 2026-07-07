@@ -55,6 +55,7 @@ export async function submitMemberCheckout(
   paymentMethod: string,
   token: string,
   couponCode?: string | null,
+  pointsToRedeem?: number,
 ) {
   const payload: Record<string, unknown> = {
     items: await buildCheckoutItems(items),
@@ -63,6 +64,10 @@ export async function submitMemberCheckout(
 
   if (couponCode) {
     payload.coupon_code = couponCode;
+  }
+
+  if (pointsToRedeem && pointsToRedeem > 0) {
+    payload.points_to_redeem = pointsToRedeem;
   }
 
   return apiFetch<{ data: CheckoutOrder }>("/member/checkout", {

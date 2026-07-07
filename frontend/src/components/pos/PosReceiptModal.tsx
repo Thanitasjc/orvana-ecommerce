@@ -17,6 +17,7 @@ export type PosReceiptData = {
   amountPaid?: number;
   change?: number;
   pointsEarned?: number;
+  pointsRedeemed?: number;
 };
 
 type PosReceiptModalProps = {
@@ -102,6 +103,12 @@ export function PosReceiptModal({ receipt, onClose }: PosReceiptModalProps) {
                 <span>฿{(receipt.change ?? 0).toLocaleString("th-TH")}</span>
               </div>
             </>
+          ) : null}
+          {receipt.pointsRedeemed ? (
+            <div className="flex justify-between text-[10px] text-indigo-700">
+              <span>ใช้แต้ม:</span>
+              <span>-{receipt.pointsRedeemed} แต้ม</span>
+            </div>
           ) : null}
           {receipt.pointsEarned ? (
             <div className="flex justify-between text-[10px] text-emerald-700">

@@ -7,6 +7,7 @@ import {
   PAYMENT_STATUS_OPTIONS,
 } from "@/lib/orders/types";
 import { OrderTotalsSummary } from "@/components/orders/OrderTotalsSummary";
+import { OrderLoyaltySummary } from "@/components/orders/OrderLoyaltySummary";
 import { printOrderReceipt } from "@/lib/print/orderReceipt";
 
 function formatDate(value?: string) {
@@ -148,6 +149,8 @@ export function AdminOrderDetailModal({
               </tbody>
             </table>
           </div>
+
+          <OrderLoyaltySummary order={order} variant="admin" />
 
           <OrderTotalsSummary order={order} variant="admin" />
         </div>

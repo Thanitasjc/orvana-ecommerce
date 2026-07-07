@@ -21,6 +21,11 @@ import {
 import { getPosSessionId } from "@/lib/pos/session";
 import { deleteCookie, getCookie, STAFF_ROLE_KEY, STAFF_TOKEN_KEY } from "@/lib/auth/cookies";
 import { calculatePosTotals } from "@/lib/pos/pricing";
+import { fetchLoyaltySettings } from "@/lib/loyalty/api";
+import { calcLoyaltyCheckout } from "@/lib/loyalty/calc";
+import type { LoyaltySettings } from "@/lib/loyalty/types";
+import { DEFAULT_LOYALTY_SETTINGS } from "@/lib/loyalty/types";
+import { calculateTotalsWithDiscount } from "@/lib/pricing/vat";
 
 export default function PosPage() {
   const [products, setProducts] = useState<PosProduct[]>([]);
@@ -35,8 +40,24 @@ export default function PosPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [pickerProduct, setPickerProduct] = useState<PosProduct | null>(null);
   const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings>(DEFAULT_LOYALTY_SETTINGS);
+  const [pointsToRedeem, setPointsToRedeem] = useState(0);
+  const [mobileTab, setMobileTab] = useState<"products" | "cart">("products");
 
   const cart = usePosCart();
+
+  const loyaltyCheckout = calcLoyaltyCheckout(
+    cart.subtotal,
+    cart.discount,
+    pointsToRedeem,
+    selectedCustomer?.points ?? 0,
+    loyaltySettings,
+  );
+
+  const checkoutTotals = calculateTotalsWithDiscount(
+    cart.subtotal,
+    cart.discount + loyaltyCheckout.pointsDiscount,
+  );
 
   const loadProducts = useCallback(async () => {
     const token = getCookie(STAFF_TOKEN_KEY);
@@ -58,6 +79,16 @@ export default function PosPage() {
       .then((res) => setCategories(res.data ?? []))
       .catch(console.error);
   }, []);
+
+  useEffect(() => {
+    fetchLoyaltySettings()
+      .then((res) => setLoyaltySettings(res.data))
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    setPointsToRedeem(0);
+  }, [selectedCustomer?.id]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -124,8 +155,9 @@ export default function PosPage() {
     setCheckoutError(null);
 
     const snapshotItems = [...cart.items];
-    const snapshotTotals = { ...cart.totals };
+    const snapshotTotals = { ...checkoutTotals };
     const snapshotTotal = snapshotTotals.total;
+    const snapshotPointsToRedeem = loyaltyCheckout.pointsUsed;
 
     try {
       const checkoutPayload = {
@@ -136,6 +168,7 @@ export default function PosPage() {
         customer_id: selectedCustomer?.id,
         payment_method: payload.paymentMethod,
         pos_session_id: getPosSessionId(),
+        points_to_redeem: snapshotPointsToRedeem > 0 ? snapshotPointsToRedeem : undefined,
         ...(cart.appliedCoupon
           ? { coupon_code: cart.appliedCoupon.code }
           : { discount: cart.discount }),
@@ -147,7 +180,8 @@ export default function PosPage() {
       const paid = payload.amountPaid ?? snapshotTotal;
       const change = payload.paymentMethod === "เงินสด" ? Math.max(0, paid - snapshotTotal) : 0;
       const orderTotal = Number(order.total);
-      const receiptTotals = calculatePosTotals(snapshotTotals.subtotal, order.discount ?? snapshotTotals.discount);
+      const combinedDiscount = (order.discount ?? snapshotTotals.discount) + (order.points_discount ?? 0);
+      const receiptTotals = calculatePosTotals(snapshotTotals.subtotal, combinedDiscount);
 
       setReceipt({
         orderNumber: order.order_number,
@@ -157,25 +191,27 @@ export default function PosPage() {
         customerName: order.customer?.name ?? selectedCustomer?.name ?? "Walk-in",
         paymentMethod: order.payment_method ?? payload.paymentMethod,
         items: snapshotItems,
-        discount: order.discount ?? snapshotTotals.discount,
+        discount: combinedDiscount,
         subtotal: snapshotTotals.subtotal,
         amountBeforeVat: receiptTotals.amountBeforeVat,
         vatAmount: receiptTotals.vatAmount,
         total: orderTotal,
         amountPaid: payload.paymentMethod === "เงินสด" ? paid : undefined,
         change: payload.paymentMethod === "เงินสด" ? change : undefined,
-        pointsEarned: selectedCustomer ? Math.floor(snapshotTotal / 100) : undefined,
+        pointsEarned: selectedCustomer ? (order.points_earned ?? loyaltyCheckout.pointsEarned) : undefined,
+        pointsRedeemed: order.points_redeemed ?? undefined,
       });
 
       cart.clearCart();
       setSelectedCustomer(null);
+      setPointsToRedeem(0);
       setShowCheckout(false);
       await loadProducts();
     } catch (error) {
       let message = "ชำระเงินไม่สำเร็จ";
       if (error && typeof error === "object") {
         const apiError = error as { message?: string; errors?: Record<string, string[]> };
-        message = apiError.errors?.stock?.[0] ?? apiError.message ?? message;
+        message = apiError.errors?.points_to_redeem?.[0] ?? apiError.errors?.stock?.[0] ?? apiError.message ?? message;
       }
       setCheckoutError(message);
     } finally {
@@ -205,43 +241,90 @@ export default function PosPage() {
         </div>
       </header>
 
-      <div className="flex max-h-[calc(100vh-80px)] flex-1 flex-col overflow-hidden lg:flex-row">
-        <PosProductGrid
-          products={products}
-          categories={categories}
-          search={search}
-          categoryId={categoryId}
-          onSearchChange={setSearch}
-          onCategoryChange={setCategoryId}
-          onAddProduct={handleAddProduct}
-        />
+      <nav className="flex border-b border-slate-200 bg-white lg:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileTab("products")}
+          className={`flex-1 py-3 text-sm font-bold transition ${
+            mobileTab === "products"
+              ? "border-b-2 border-emerald-600 text-emerald-700"
+              : "text-slate-500"
+          }`}
+        >
+          สินค้า
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab("cart")}
+          className={`flex flex-1 items-center justify-center gap-1.5 py-3 text-sm font-bold transition ${
+            mobileTab === "cart"
+              ? "border-b-2 border-emerald-600 text-emerald-700"
+              : "text-slate-500"
+          }`}
+        >
+          ตะกร้า
+          {cart.itemCount > 0 ? (
+            <span className="rounded-full bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+              {cart.itemCount}
+            </span>
+          ) : null}
+        </button>
+      </nav>
 
-        <PosCartSidebar
-          items={cart.items}
-          itemCount={cart.itemCount}
-          totals={cart.totals}
-          appliedCoupon={cart.appliedCoupon}
-          couponError={cart.couponError}
-          couponLoading={cart.couponLoading}
-          selectedCustomer={selectedCustomer}
-          onSelectCustomer={setSelectedCustomer}
-          onAddCustomer={() => setShowAddCustomer(true)}
-          onDiscountChange={cart.setDiscount}
-          onApplyCoupon={cart.applyCoupon}
-          onRemoveCoupon={cart.removeCoupon}
-          onUpdateQuantity={cart.updateQuantity}
-          onRemoveItem={cart.removeItem}
-          onCheckout={() => {
-            setCheckoutError(null);
-            setShowCheckout(true);
-          }}
-        />
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+        <div
+          className={`min-h-0 flex-1 flex-col overflow-hidden ${
+            mobileTab === "products" ? "flex" : "hidden lg:flex"
+          }`}
+        >
+          <PosProductGrid
+            products={products}
+            categories={categories}
+            search={search}
+            categoryId={categoryId}
+            onSearchChange={setSearch}
+            onCategoryChange={setCategoryId}
+            onAddProduct={handleAddProduct}
+          />
+        </div>
+
+        <div
+          className={`min-h-0 flex-col overflow-hidden lg:flex lg:w-[420px] lg:shrink-0 ${
+            mobileTab === "cart" ? "flex flex-1" : "hidden"
+          }`}
+        >
+          <PosCartSidebar
+            items={cart.items}
+            itemCount={cart.itemCount}
+            totals={cart.totals}
+            appliedCoupon={cart.appliedCoupon}
+            couponError={cart.couponError}
+            couponLoading={cart.couponLoading}
+            selectedCustomer={selectedCustomer}
+            onSelectCustomer={setSelectedCustomer}
+            onAddCustomer={() => setShowAddCustomer(true)}
+            onDiscountChange={cart.setDiscount}
+            onApplyCoupon={cart.applyCoupon}
+            onRemoveCoupon={cart.removeCoupon}
+            onUpdateQuantity={cart.updateQuantity}
+            onRemoveItem={cart.removeItem}
+            onCheckout={() => {
+              setCheckoutError(null);
+              setShowCheckout(true);
+            }}
+          />
+        </div>
       </div>
 
       <PosCheckoutModal
         open={showCheckout}
-        totals={cart.totals}
+        totals={checkoutTotals}
         customer={selectedCustomer}
+        loyaltySettings={loyaltySettings}
+        pointsToRedeem={pointsToRedeem}
+        pointsDiscount={loyaltyCheckout.pointsDiscount}
+        pointsEarned={loyaltyCheckout.pointsEarned}
+        onPointsToRedeemChange={setPointsToRedeem}
         submitting={submitting}
         error={checkoutError}
         onClose={() => setShowCheckout(false)}

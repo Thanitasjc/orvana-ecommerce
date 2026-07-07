@@ -82,7 +82,7 @@ export function PosCartSidebar({
   }
 
   return (
-    <div className="flex w-full shrink-0 flex-col border-t border-slate-200 bg-white lg:w-[420px] lg:border-l lg:border-t-0">
+    <div className="flex h-full min-h-0 w-full flex-col border-t border-slate-200 bg-white lg:border-l lg:border-t-0">
       <div className="border-b border-slate-200 bg-slate-50 p-4">
         <div className="mb-3 flex items-center justify-between">
           <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -99,7 +99,7 @@ export function PosCartSidebar({
         <PosMemberSelector selected={selectedCustomer} onSelect={onSelectCustomer} />
       </div>
 
-      <div className="max-h-[300px] flex-1 space-y-3 overflow-y-auto p-4 lg:max-h-none">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
         <h4 className="mb-2 flex justify-between text-xs font-bold uppercase tracking-wider text-slate-500">
           <span>รายการตะกร้าหน้าร้าน</span>
           <span>({itemCount} ชิ้น)</span>

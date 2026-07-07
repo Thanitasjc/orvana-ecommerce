@@ -37,4 +37,9 @@ class Customer extends Authenticatable
     {
         return $this->hasMany(Order::class);
     }
+
+    public function loyaltyTransactions(): HasMany
+    {
+        return $this->hasMany(LoyaltyPointTransaction::class);
+    }
 }

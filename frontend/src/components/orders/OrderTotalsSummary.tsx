@@ -39,6 +39,13 @@ export function OrderTotalsSummary({ order, variant = "admin" }: OrderTotalsSumm
         </div>
       ) : null}
 
+      {totals.pointsDiscount > 0 ? (
+        <div className={discountClass}>
+          <span>ส่วนลดแต้ม ({totals.pointsRedeemed} แต้ม)</span>
+          <span>-฿{formatMoney(totals.pointsDiscount)}</span>
+        </div>
+      ) : null}
+
       {totals.shippingFee > 0 ? (
         <div className={rowClass}>
           <span>ค่าจัดส่ง</span>
@@ -59,6 +66,15 @@ export function OrderTotalsSummary({ order, variant = "admin" }: OrderTotalsSumm
       </div>
 
       <p className={totalClass}>ยอดรวม (รวม VAT): ฿{formatMoney(totals.total)}</p>
+
+      {totals.pointsEarned > 0 ? (
+        <p className={isAdmin ? "mt-2 text-sm text-emerald-400" : "mt-2 text-success small mb-0"}>
+          แต้มที่ได้รับ: +{totals.pointsEarned} แต้ม
+          {totals.loyaltyReversed ? (
+            <span className={isAdmin ? "text-slate-500" : "text-muted"}> (คืนแต้มแล้ว)</span>
+          ) : null}
+        </p>
+      ) : null}
     </div>
   );
 }

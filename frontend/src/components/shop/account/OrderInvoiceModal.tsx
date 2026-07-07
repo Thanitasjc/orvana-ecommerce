@@ -3,6 +3,7 @@
 import type { Order } from "@/lib/orders/types";
 import { ORDER_STATUS_OPTIONS, PAYMENT_STATUS_OPTIONS } from "@/lib/orders/types";
 import { OrderTotalsSummary } from "@/components/orders/OrderTotalsSummary";
+import { OrderLoyaltySummary } from "@/components/orders/OrderLoyaltySummary";
 import { printOrderReceipt } from "@/lib/print/orderReceipt";
 
 function formatMoney(value: number | string) {
@@ -146,6 +147,7 @@ export function OrderInvoiceModal({
               </table>
             </div>
 
+            <OrderLoyaltySummary order={order} variant="shop" />
             <OrderTotalsSummary order={order} variant="shop" />
           </div>
           <div className="modal-footer">

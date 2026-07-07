@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\Admin\AdminBlogController;
 use App\Http\Controllers\Api\V1\Admin\AdminCategoryController;
 use App\Http\Controllers\Api\V1\Admin\AdminCustomerController;
 use App\Http\Controllers\Api\V1\Admin\AdminDashboardController;
+use App\Http\Controllers\Api\V1\Admin\AdminLoyaltyController;
 use App\Http\Controllers\Api\V1\Admin\AdminOrderController;
 use App\Http\Controllers\Api\V1\Admin\AdminProductController;
 use App\Http\Controllers\Api\V1\CouponController;
@@ -15,8 +16,10 @@ use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\HeaderCmsController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\HomepageCmsController;
+use App\Http\Controllers\Api\V1\LoyaltyController;
 use App\Http\Controllers\Api\V1\MemberAuthController;
 use App\Http\Controllers\Api\V1\MemberCheckoutController;
+use App\Http\Controllers\Api\V1\MemberLoyaltyController;
 use App\Http\Controllers\Api\V1\Pos\PosCheckoutController;
 use App\Http\Controllers\Api\V1\Pos\PosCustomerController;
 use App\Http\Controllers\Api\V1\Pos\PosProductController;
@@ -35,6 +38,8 @@ Route::prefix('v1')->group(function () {
   Route::post('coupons/validate', [CouponController::class, 'validateCode']);
   Route::get('blogs', [BlogController::class, 'index']);
   Route::get('blogs/{slug}', [BlogController::class, 'show']);
+  Route::get('loyalty/settings', [LoyaltyController::class, 'settings']);
+  Route::post('loyalty/preview', [LoyaltyController::class, 'preview']);
 
   Route::prefix('member')->group(function () {
     Route::post('register', [MemberAuthController::class, 'register']);
@@ -45,6 +50,7 @@ Route::prefix('v1')->group(function () {
       Route::get('me', [MemberAuthController::class, 'me']);
       Route::post('avatar', [MemberAuthController::class, 'updateAvatar']);
       Route::get('orders', [MemberCheckoutController::class, 'orders']);
+      Route::get('loyalty/transactions', [MemberLoyaltyController::class, 'transactions']);
       Route::post('checkout', [MemberCheckoutController::class, 'store']);
     });
   });
@@ -108,5 +114,8 @@ Route::prefix('v1')->group(function () {
       Route::get('blogs/{blog}', [AdminBlogController::class, 'show']);
       Route::patch('blogs/{blog}', [AdminBlogController::class, 'update']);
       Route::delete('blogs/{blog}', [AdminBlogController::class, 'destroy']);
+      Route::get('loyalty', [AdminLoyaltyController::class, 'show']);
+      Route::patch('loyalty', [AdminLoyaltyController::class, 'update']);
+      Route::get('customers/{customer}/loyalty-transactions', [AdminLoyaltyController::class, 'customerTransactions']);
     });
 });

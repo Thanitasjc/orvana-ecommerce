@@ -15,6 +15,7 @@ class OrderService
     public function __construct(
         private readonly InventoryService $inventory,
         private readonly LoyaltyService $loyalty,
+        private readonly OrderEmailService $orderEmail,
     ) {}
 
     /**
@@ -62,12 +63,20 @@ class OrderService
         int $shippingFee = 0,
         int $shippingDiscount = 0,
         ?string $posSessionId = null,
+        int $pointsToRedeem = 0,
     ): Order {
-        return DB::transaction(function () use ($items, $channel, $discount, $paymentMethod, $customer, $staff, $coupon, $shippingFee, $shippingDiscount, $posSessionId) {
+        $order = DB::transaction(function () use ($items, $channel, $discount, $paymentMethod, $customer, $staff, $coupon, $shippingFee, $shippingDiscount, $posSessionId, $pointsToRedeem) {
             $built = $this->buildLineItems($items);
+            $payableAfterCoupon = max(0, $built['total'] - $discount);
+
+            $redeem = $this->loyalty->validateRedeem($customer, $pointsToRedeem, $payableAfterCoupon);
+            $pointsDiscount = $redeem['discount'];
+            $pointsRedeemed = $redeem['points_used'];
+
+            $totalDiscount = $discount + $pointsDiscount;
             $payableShipping = max(0, $shippingFee - $shippingDiscount);
-            $finalTotal = max(0, $built['total'] - $discount + $payableShipping);
-            $finalProfit = max(0, $built['profit'] - $discount);
+            $finalTotal = max(0, $built['total'] - $totalDiscount + $payableShipping);
+            $finalProfit = max(0, $built['profit'] - $totalDiscount);
 
             $this->inventory->deduct($items);
 
@@ -79,6 +88,9 @@ class OrderService
                 'coupon_id' => $coupon?->id,
                 'coupon_code' => $coupon?->code,
                 'discount' => $discount,
+                'points_redeemed' => $pointsRedeemed,
+                'points_discount' => $pointsDiscount,
+                'points_earned' => 0,
                 'shipping_fee' => $shippingFee,
                 'shipping_discount' => $shippingDiscount,
                 'total' => $finalTotal,
@@ -101,7 +113,7 @@ class OrderService
                 ]);
             }
 
-            $this->loyalty->earnPoints($customer, $order);
+            $this->loyalty->processOrder($customer, $order, $pointsRedeemed);
 
             if ($coupon) {
                 $coupon->increment('used_count');
@@ -117,12 +129,18 @@ class OrderService
                         'type' => $coupon->type,
                         'apply_to' => $coupon->apply_to,
                         'pos_session_id' => $customer ? null : $posSessionId,
+                        'points_redeemed' => $pointsRedeemed > 0 ? $pointsRedeemed : null,
+                        'points_discount' => $pointsDiscount > 0 ? $pointsDiscount : null,
                     ]),
                 ]);
             }
 
-            return $order->load(['items', 'customer']);
+            return $order->fresh()->load(['items', 'customer']);
         });
+
+        $this->orderEmail->sendConfirmation($order);
+
+        return $order;
     }
 
     private function generateOrderNumber(string $channel): string

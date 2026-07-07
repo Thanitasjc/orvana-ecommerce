@@ -18,6 +18,10 @@ export type Order = {
   order_number: string;
   total: number | string;
   discount?: number | string;
+  points_redeemed?: number | string;
+  points_discount?: number | string;
+  points_earned?: number | string;
+  loyalty_reversed_at?: string | null;
   coupon_code?: string | null;
   shipping_fee?: number | string;
   shipping_discount?: number | string;

@@ -41,6 +41,7 @@ export type PosCheckoutPayload = {
   coupon_code?: string;
   payment_method?: string;
   pos_session_id?: string;
+  points_to_redeem?: number;
 };
 
 export type PosOrderItem = {
@@ -56,6 +57,9 @@ export type PosOrder = {
   order_number: string;
   total: number;
   discount: number;
+  points_discount?: number;
+  points_redeemed?: number;
+  points_earned?: number;
   payment_method?: string | null;
   created_at?: string;
   customer?: PosCustomer | null;

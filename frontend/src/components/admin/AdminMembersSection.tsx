@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AdminMemberFormModal } from "@/components/admin/AdminMemberFormModal";
+import { AdminMemberLoyaltyHistoryModal } from "@/components/admin/AdminMemberLoyaltyHistoryModal";
 import { AdminPanel } from "@/components/admin/AdminPanel";
 import {
   createAdminCustomer,
@@ -43,6 +44,7 @@ export function AdminMembersSection() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [loyaltyMember, setLoyaltyMember] = useState<AdminCustomer | null>(null);
 
   const loadMembers = useCallback(async () => {
     const token = getCookie(STAFF_TOKEN_KEY);
@@ -134,6 +136,14 @@ export function AdminMembersSection() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function openLoyaltyHistory(member: AdminCustomer) {
+    setLoyaltyMember(member);
+  }
+
+  function closeLoyaltyHistory() {
+    setLoyaltyMember(null);
   }
 
   async function handleDelete(member: AdminCustomer) {
@@ -232,7 +242,14 @@ export function AdminMembersSection() {
                         <td className="px-3 py-3 text-emerald-300">{member.points ?? 0}</td>
                         <td className="px-3 py-3 text-slate-400">{formatDate(member.created_at)}</td>
                         <td className="px-3 py-3">
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openLoyaltyHistory(member)}
+                              className="rounded-md border border-amber-500/40 px-2 py-1 text-xs text-amber-300 hover:bg-amber-500/10"
+                            >
+                              ประวัติแต้ม
+                            </button>
                             <button
                               type="button"
                               onClick={() => openEditForm(member)}
@@ -291,6 +308,12 @@ export function AdminMembersSection() {
         error={formError}
         onClose={closeForm}
         onSubmit={handleSubmit}
+      />
+
+      <AdminMemberLoyaltyHistoryModal
+        open={loyaltyMember !== null}
+        member={loyaltyMember}
+        onClose={closeLoyaltyHistory}
       />
     </>
   );

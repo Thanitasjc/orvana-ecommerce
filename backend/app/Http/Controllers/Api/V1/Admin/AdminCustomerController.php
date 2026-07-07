@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Services\LoyaltyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -11,6 +12,8 @@ use Illuminate\Validation\Rule;
 
 class AdminCustomerController extends Controller
 {
+    public function __construct(private readonly LoyaltyService $loyalty) {}
+
     public function index(Request $request): JsonResponse
     {
         $query = Customer::query()->latest();
@@ -67,6 +70,15 @@ class AdminCustomerController extends Controller
 
         if (array_key_exists('password', $validated) && blank($validated['password'])) {
             unset($validated['password']);
+        }
+
+        if (array_key_exists('points', $validated)) {
+            $newPoints = (int) $validated['points'];
+            $delta = $newPoints - $customer->points;
+            if ($delta !== 0) {
+                $this->loyalty->logAdjustment($customer, $delta, 'ปรับแต้มโดย Admin');
+            }
+            unset($validated['points']);
         }
 
         $customer->update($validated);

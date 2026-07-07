@@ -24,7 +24,7 @@ export function PosProductGrid({
   onAddProduct,
 }: PosProductGridProps) {
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto p-4">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto p-4">
       <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row">
           <div className="relative flex-1">

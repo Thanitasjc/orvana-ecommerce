@@ -16,6 +16,10 @@ class Order extends Model
         'coupon_id',
         'coupon_code',
         'discount',
+        'points_redeemed',
+        'points_discount',
+        'points_earned',
+        'loyalty_reversed_at',
         'shipping_fee',
         'shipping_discount',
         'total',
@@ -24,6 +28,13 @@ class Order extends Model
         'status',
         'payment_status',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'loyalty_reversed_at' => 'datetime',
+        ];
+    }
 
     public function customer(): BelongsTo
     {

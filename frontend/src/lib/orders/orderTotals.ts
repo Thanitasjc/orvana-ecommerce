@@ -6,6 +6,10 @@ export type OrderTotalsBreakdown = {
   subtotal: number;
   discount: number;
   couponCode: string | null;
+  pointsDiscount: number;
+  pointsRedeemed: number;
+  pointsEarned: number;
+  loyaltyReversed: boolean;
   shippingFee: number;
   shippingDiscount: number;
   payableShipping: number;
@@ -26,6 +30,9 @@ export function calculateOrderItemSubtotal(order: Order) {
 export function calculateOrderTotals(order: Order): OrderTotalsBreakdown {
   const subtotal = calculateOrderItemSubtotal(order);
   const discount = toAmount(order.discount);
+  const pointsDiscount = toAmount(order.points_discount);
+  const pointsRedeemed = toAmount(order.points_redeemed);
+  const pointsEarned = toAmount(order.points_earned);
   const shippingFee = toAmount(order.shipping_fee);
   const shippingDiscount = toAmount(order.shipping_discount);
   const payableShipping = Math.max(0, shippingFee - shippingDiscount);
@@ -36,6 +43,10 @@ export function calculateOrderTotals(order: Order): OrderTotalsBreakdown {
     subtotal,
     discount,
     couponCode: order.coupon_code?.trim() || null,
+    pointsDiscount,
+    pointsRedeemed,
+    pointsEarned,
+    loyaltyReversed: Boolean(order.loyalty_reversed_at),
     shippingFee,
     shippingDiscount,
     payableShipping,
@@ -69,6 +80,12 @@ export function buildOrderTotalsPrintHtml(
     );
   }
 
+  if (totals.pointsDiscount > 0) {
+    lines.push(
+      `<div class="${discountClass}"><span>ส่วนลดแต้ม (${totals.pointsRedeemed} แต้ม):</span><span>-฿${formatMoney(totals.pointsDiscount)}</span></div>`,
+    );
+  }
+
   if (totals.shippingFee > 0) {
     lines.push(
       `<div class="total-row"><span>ค่าจัดส่ง:</span><span>฿${formatMoney(totals.shippingFee)}</span></div>`,
@@ -92,6 +109,13 @@ export function buildOrderTotalsPrintHtml(
     `<div class="total-row"><span>VAT ${VAT_PERCENT}%:</span><span>฿${formatMoney(totals.vatAmount)}</span></div>`,
     `<div class="grand-total"><span>รวมสุทธิ (รวม VAT):</span><span>฿${formatMoney(totals.total)}</span></div>`,
   );
+
+  if (totals.pointsEarned > 0) {
+    const earnNote = totals.loyaltyReversed ? " (คืนแต้มแล้ว)" : "";
+    lines.push(
+      `<div class="total-row"><span>แต้มที่ได้รับ${earnNote}:</span><span>+${totals.pointsEarned} แต้ม</span></div>`,
+    );
+  }
 
   return lines.join("\n");
 }

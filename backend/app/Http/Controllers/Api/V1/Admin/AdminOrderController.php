@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Services\LoyaltyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminOrderController extends Controller
 {
+    public function __construct(private readonly LoyaltyService $loyalty) {}
     public function index(Request $request): JsonResponse
     {
         return response()->json($this->filteredQuery($request)->paginate(15));
@@ -32,7 +35,23 @@ class AdminOrderController extends Controller
             'payment_status' => 'sometimes|in:pending,paid,refunded',
         ]);
 
-        $order->update($validated);
+        $shouldReverse = (
+            isset($validated['status'])
+            && $validated['status'] === 'cancelled'
+            && $order->status !== 'cancelled'
+        ) || (
+            isset($validated['payment_status'])
+            && $validated['payment_status'] === 'refunded'
+            && $order->payment_status !== 'refunded'
+        );
+
+        DB::transaction(function () use ($order, $validated, $shouldReverse) {
+            if ($shouldReverse) {
+                $this->loyalty->reverseOrder($order);
+            }
+
+            $order->update($validated);
+        });
 
         return response()->json([
             'data' => $order->fresh()->load([

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import type { PosCustomer } from "@/lib/api/pos";
 import { PosTotalsBreakdown } from "@/components/pos/PosTotalsBreakdown";
+import type { LoyaltySettings } from "@/lib/loyalty/types";
+import { DEFAULT_LOYALTY_SETTINGS } from "@/lib/loyalty/types";
 import type { VatBreakdown } from "@/lib/pricing/vat";
 
 const PAYMENT_METHODS = ["PromptPay", "บัตรเครดิต", "เงินสด"] as const;
@@ -11,6 +13,11 @@ type PosCheckoutModalProps = {
   open: boolean;
   totals: VatBreakdown;
   customer: PosCustomer | null;
+  loyaltySettings?: LoyaltySettings;
+  pointsToRedeem: number;
+  pointsDiscount: number;
+  pointsEarned: number;
+  onPointsToRedeemChange: (value: number) => void;
   submitting: boolean;
   error: string | null;
   onClose: () => void;
@@ -21,6 +28,11 @@ export function PosCheckoutModal({
   open,
   totals,
   customer,
+  loyaltySettings = DEFAULT_LOYALTY_SETTINGS,
+  pointsToRedeem,
+  pointsDiscount,
+  pointsEarned,
+  onPointsToRedeemChange,
   submitting,
   error,
   onClose,
@@ -40,8 +52,10 @@ export function PosCheckoutModal({
 
   const paid = Number(amountPaid) || 0;
   const change = paymentMethod === "เงินสด" ? Math.max(0, paid - totals.total) : 0;
-  const pointsEarned = Math.floor(totals.total / 100);
   const cashInvalid = paymentMethod === "เงินสด" && paid < totals.total;
+  const maxRedeemHint = loyaltySettings.redeem_enabled
+    ? `ขั้นต่ำ ${loyaltySettings.min_redeem_points} แต้ม · ${loyaltySettings.redeem_points_per_baht} แต้ม = ฿1`
+    : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
@@ -55,7 +69,31 @@ export function PosCheckoutModal({
 
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
           <PosTotalsBreakdown totals={totals} size="md" emphasizeTotal />
+          {pointsDiscount > 0 ? (
+            <p className="mt-2 text-xs font-semibold text-indigo-700">
+              ส่วนลดจากแต้ม: -฿{pointsDiscount.toLocaleString("th-TH")}
+            </p>
+          ) : null}
         </div>
+
+        {customer && loyaltySettings.redeem_enabled ? (
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
+              ใช้แต้มแลกส่วนลด (คงเหลือ {customer.points ?? 0} แต้ม)
+            </label>
+            <input
+              type="number"
+              min={0}
+              step={loyaltySettings.redeem_points_per_baht}
+              max={customer.points ?? 0}
+              value={pointsToRedeem || ""}
+              onChange={(event) => onPointsToRedeemChange(Number(event.target.value) || 0)}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-right text-sm font-bold text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              placeholder="0"
+            />
+            {maxRedeemHint ? <p className="text-xs text-slate-500">{maxRedeemHint}</p> : null}
+          </div>
+        ) : null}
 
         <div className="space-y-2">
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">ช่องทางชำระเงิน</label>
@@ -98,7 +136,7 @@ export function PosCheckoutModal({
           </div>
         ) : null}
 
-        {customer ? (
+        {customer && loyaltySettings.enabled ? (
           <div className="flex items-center justify-between rounded-xl border border-emerald-100 bg-emerald-50/50 p-2.5 text-xs">
             <span className="font-bold text-slate-800">{customer.name}</span>
             <span className="font-semibold text-emerald-700">ได้รับแต้มสะสม: +{pointsEarned} แต้ม</span>

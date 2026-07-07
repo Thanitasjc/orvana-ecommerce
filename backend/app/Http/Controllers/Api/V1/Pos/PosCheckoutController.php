@@ -28,6 +28,7 @@ class PosCheckoutController extends Controller
             'coupon_code' => ['nullable', 'string', 'max:50'],
             'payment_method' => ['nullable', 'string', 'max:100'],
             'pos_session_id' => ['nullable', 'string', 'max:64'],
+            'points_to_redeem' => ['nullable', 'integer', 'min:0'],
         ]);
 
         $customer = isset($validated['customer_id'])
@@ -64,6 +65,7 @@ class PosCheckoutController extends Controller
                 shippingFee: 0,
                 shippingDiscount: $shippingDiscount,
                 posSessionId: $validated['pos_session_id'] ?? null,
+                pointsToRedeem: $validated['points_to_redeem'] ?? 0,
             );
         } catch (InsufficientStockException $e) {
             return response()->json([

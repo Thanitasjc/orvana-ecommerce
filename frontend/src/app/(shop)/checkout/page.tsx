@@ -9,6 +9,10 @@ import { ShopVatSummary } from "@/components/shop/ShopVatSummary";
 import { submitMemberCheckout } from "@/lib/api/checkout";
 import { apiFetch } from "@/lib/api/client";
 import { getCookie, MEMBER_TOKEN_KEY } from "@/lib/auth/cookies";
+import { fetchLoyaltySettings } from "@/lib/loyalty/api";
+import { calcEarnPoints, calcLoyaltyCheckout } from "@/lib/loyalty/calc";
+import type { LoyaltySettings } from "@/lib/loyalty/types";
+import { DEFAULT_LOYALTY_SETTINGS } from "@/lib/loyalty/types";
 import { formatBaht } from "@/lib/pricing/vat";
 import { calculateShopTotals } from "@/lib/shop/orderTotals";
 
@@ -16,6 +20,7 @@ type Member = {
   name: string;
   email: string;
   phone?: string | null;
+  points: number;
 };
 
 const PAYMENT_OPTIONS = [
@@ -34,17 +39,34 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings>(DEFAULT_LOYALTY_SETTINGS);
+  const [pointsToRedeem, setPointsToRedeem] = useState(0);
+
+  const couponDiscount = appliedCoupon?.discount ?? 0;
+  const loyaltyCheckout = calcLoyaltyCheckout(
+    subtotal,
+    couponDiscount,
+    pointsToRedeem,
+    member?.points ?? 0,
+    loyaltySettings,
+  );
 
   const totals = useMemo(
     () =>
       calculateShopTotals(
         subtotal,
-        appliedCoupon?.discount ?? 0,
+        couponDiscount + loyaltyCheckout.pointsDiscount,
         undefined,
         appliedCoupon?.shipping_discount ?? 0,
       ),
-    [subtotal, appliedCoupon?.discount, appliedCoupon?.shipping_discount],
+    [subtotal, couponDiscount, loyaltyCheckout.pointsDiscount, appliedCoupon?.shipping_discount],
   );
+
+  useEffect(() => {
+    fetchLoyaltySettings()
+      .then((res) => setLoyaltySettings(res.data))
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     const token = getCookie(MEMBER_TOKEN_KEY);
@@ -82,13 +104,21 @@ export default function CheckoutPage() {
 
     setLoading(true);
     try {
-      const res = await submitMemberCheckout(items, paymentMethod, token, appliedCoupon?.code);
+      const res = await submitMemberCheckout(
+        items,
+        paymentMethod,
+        token,
+        appliedCoupon?.code,
+        loyaltyCheckout.pointsUsed,
+      );
       setItems([]);
       removeCoupon();
       setSuccess(`สั่งซื้อสำเร็จ — เลขที่ออเดอร์ ${res.data.order_number}`);
       window.setTimeout(() => router.push("/account"), 1800);
     } catch (err: unknown) {
-      const message = (err as { message?: string }).message ?? "สั่งซื้อไม่สำเร็จ";
+      const apiErr = err as { message?: string; errors?: Record<string, string[]> };
+      const message =
+        apiErr.errors?.points_to_redeem?.[0] ?? apiErr.message ?? "สั่งซื้อไม่สำเร็จ";
       setError(message);
     } finally {
       setLoading(false);
@@ -272,6 +302,37 @@ export default function CheckoutPage() {
                           <li className="tp-order-info-list-subtotal">
                             <span>ส่วนลด ({appliedCoupon?.code})</span>
                             <span className="text-success">−฿{formatBaht(totals.discount)}</span>
+                          </li>
+                        ) : null}
+
+                        {loyaltyCheckout.pointsDiscount > 0 ? (
+                          <li className="tp-order-info-list-subtotal">
+                            <span>ส่วนลดแต้ม ({loyaltyCheckout.pointsUsed} แต้ม)</span>
+                            <span className="text-success">−฿{formatBaht(loyaltyCheckout.pointsDiscount)}</span>
+                          </li>
+                        ) : null}
+
+                        {member && loyaltySettings.redeem_enabled ? (
+                          <li className="tp-order-info-list-subtotal">
+                            <span>ใช้แต้ม (คงเหลือ {member.points})</span>
+                            <input
+                              type="number"
+                              min={0}
+                              step={loyaltySettings.redeem_points_per_baht}
+                              max={member.points}
+                              value={pointsToRedeem || ""}
+                              onChange={(event) => setPointsToRedeem(Number(event.target.value) || 0)}
+                              className="form-control form-control-sm text-end"
+                              style={{ maxWidth: 120 }}
+                              placeholder="0"
+                            />
+                          </li>
+                        ) : null}
+
+                        {member && loyaltySettings.enabled ? (
+                          <li className="tp-order-info-list-subtotal">
+                            <span>แต้มที่จะได้รับ</span>
+                            <span>+{calcEarnPoints(totals.total, loyaltySettings)} แต้ม</span>
                           </li>
                         ) : null}
 

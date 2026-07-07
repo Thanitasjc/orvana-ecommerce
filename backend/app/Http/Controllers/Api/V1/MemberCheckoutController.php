@@ -24,6 +24,7 @@ class MemberCheckoutController extends Controller
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'payment_method' => ['nullable', 'string', 'max:100'],
             'coupon_code' => ['nullable', 'string', 'max:50'],
+            'points_to_redeem' => ['nullable', 'integer', 'min:0'],
         ]);
 
         $built = $this->orders->buildLineItems($validated['items']);
@@ -56,6 +57,7 @@ class MemberCheckoutController extends Controller
                 coupon: $coupon,
                 shippingFee: $shippingFee,
                 shippingDiscount: $shippingDiscount,
+                pointsToRedeem: $validated['points_to_redeem'] ?? 0,
             );
         } catch (InsufficientStockException $e) {
             return response()->json([

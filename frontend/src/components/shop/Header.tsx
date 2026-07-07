@@ -13,6 +13,12 @@ import { defaultHeaderCms, getVisibleMenuItems, type HeaderCmsState } from "@/li
 import { resolveProductImage } from "@/lib/api/products";
 import { MEMBER_TOKEN_KEY, deleteCookie, getCookie, setCookie } from "@/lib/auth/cookies";
 
+type MemberSession = {
+  name: string;
+  points: number;
+  tier: string;
+};
+
 type HeaderProps = {
   initialCms?: HeaderCmsState;
 };
@@ -25,7 +31,7 @@ export function Header({ initialCms = defaultHeaderCms }: HeaderProps) {
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [memberName, setMemberName] = useState<string | null>(null);
+  const [member, setMember] = useState<MemberSession | null>(null);
   const [headerCms] = useState<HeaderCmsState>(initialCms);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
   const { cartCount, items: cartItems, subtotal, removeItem } = useCart();
@@ -55,11 +61,17 @@ export function Header({ initialCms = defaultHeaderCms }: HeaderProps) {
     const token = getCookie(MEMBER_TOKEN_KEY);
     if (!token) return;
 
-    apiFetch<{ data: { name: string } }>("/member/me", { token })
-      .then((res) => setMemberName(res.data.name))
+    apiFetch<{ data: { name: string; points: number; tier: string } }>("/member/me", { token })
+      .then((res) =>
+        setMember({
+          name: res.data.name,
+          points: res.data.points ?? 0,
+          tier: res.data.tier ?? "Silver",
+        }),
+      )
       .catch(() => {
         deleteCookie(MEMBER_TOKEN_KEY);
-        setMemberName(null);
+        setMember(null);
       });
   }, []);
 
@@ -83,7 +95,7 @@ export function Header({ initialCms = defaultHeaderCms }: HeaderProps) {
 
     try {
       const res = await apiFetch<{
-        data: { token: string; user: { name: string } };
+        data: { token: string; user: { name: string; points: number; tier: string } };
       }>("/member/login", {
         method: "POST",
         body: JSON.stringify({
@@ -93,7 +105,11 @@ export function Header({ initialCms = defaultHeaderCms }: HeaderProps) {
       });
 
       setCookie(MEMBER_TOKEN_KEY, res.data.token);
-      setMemberName(res.data.user.name);
+      setMember({
+        name: res.data.user.name,
+        points: res.data.user.points ?? 0,
+        tier: res.data.user.tier ?? "Silver",
+      });
       setIsAccountMenuOpen(false);
       setIsLoginModalOpen(false);
       router.push("/");
@@ -106,7 +122,7 @@ export function Header({ initialCms = defaultHeaderCms }: HeaderProps) {
 
   function onLogout() {
     deleteCookie(MEMBER_TOKEN_KEY);
-    setMemberName(null);
+    setMember(null);
     setIsAccountMenuOpen(false);
     router.push("/");
   }
@@ -148,7 +164,7 @@ export function Header({ initialCms = defaultHeaderCms }: HeaderProps) {
                       className="d-flex align-items-center"
                       style={{ background: "transparent", border: 0 }}
                       onClick={() =>
-                        memberName
+                        member
                           ? setIsAccountMenuOpen((prev) => !prev)
                           : (setLoginError(null), setIsLoginModalOpen(true))
                       }
@@ -174,10 +190,17 @@ export function Header({ initialCms = defaultHeaderCms }: HeaderProps) {
                           />
                         </svg>
                       </span>
-                      <span>{memberName ?? "บัญชีสมาชิก"}</span>
+                      <span className="d-flex flex-column align-items-start" style={{ lineHeight: 1.25 }}>
+                        <span>{member?.name ?? "บัญชีสมาชิก"}</span>
+                        {member ? (
+                          <span style={{ fontSize: "11px", color: "#059669", fontWeight: 600 }}>
+                            ⭐ {member.points.toLocaleString("th-TH")} แต้ม · {member.tier}
+                          </span>
+                        ) : null}
+                      </span>
                     </button>
 
-                    {memberName && isAccountMenuOpen ? (
+                    {member && isAccountMenuOpen ? (
                       <div
                         role="menu"
                         style={{
@@ -202,6 +225,9 @@ export function Header({ initialCms = defaultHeaderCms }: HeaderProps) {
                         >
                           My Profile
                         </Link>
+                        <div style={{ padding: "8px 14px", fontSize: "12px", color: "#059669" }}>
+                          แต้มคงเหลือ: <strong>{member.points.toLocaleString("th-TH")}</strong> · {member.tier}
+                        </div>
                         <Link
                           href="/wishlist"
                           role="menuitem"
