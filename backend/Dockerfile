@@ -25,6 +25,7 @@ COPY docker/start.sh /start.sh
 RUN chmod +x /start.sh
 
 ENV BUILD_ID=2026-07-07-payment-omise
+ENV SESSION_DRIVER=cookie
 ENV OMISE_PUBLIC_KEY=pkey_test_689gs96ehzjmf5537qy
 ENV OMISE_SECRET_KEY=skey_test_689gs96uyhn5qdplvi6
 
