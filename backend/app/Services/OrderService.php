@@ -66,8 +66,10 @@ class OrderService
         ?string $posSessionId = null,
         int $pointsToRedeem = 0,
         ?array $guestDetails = null,
+        ?int $shippingMethodId = null,
+        ?string $shippingMethodName = null,
     ): Order {
-        $order = DB::transaction(function () use ($items, $channel, $discount, $paymentMethod, $customer, $staff, $coupon, $shippingFee, $shippingDiscount, $posSessionId, $pointsToRedeem, $guestDetails) {
+        $order = DB::transaction(function () use ($items, $channel, $discount, $paymentMethod, $customer, $staff, $coupon, $shippingFee, $shippingDiscount, $posSessionId, $pointsToRedeem, $guestDetails, $shippingMethodId, $shippingMethodName) {
             $built = $this->buildLineItems($items);
             $payableAfterCoupon = max(0, $built['total'] - $discount);
 
@@ -93,6 +95,8 @@ class OrderService
                 'shipping_province' => $guestDetails['province'] ?? null,
                 'shipping_postcode' => $guestDetails['postcode'] ?? null,
                 'shipping_notes' => $guestDetails['notes'] ?? null,
+                'shipping_method_id' => $shippingMethodId,
+                'shipping_method_name' => $shippingMethodName,
                 'staff_id' => $staff?->id,
                 'coupon_id' => $coupon?->id,
                 'coupon_code' => $coupon?->code,

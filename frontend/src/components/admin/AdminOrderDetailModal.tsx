@@ -68,6 +68,11 @@ export function AdminOrderDetailModal({
               <p className="text-slate-300">
                 <span className="text-slate-500">ชำระเงิน:</span> {order.payment_method ?? "-"}
               </p>
+              {order.shipping_method_name ? (
+                <p className="text-slate-300">
+                  <span className="text-slate-500">จัดส่ง:</span> {order.shipping_method_name}
+                </p>
+              ) : null}
               {order.customer ? (
                 <p className="text-slate-300">
                   <span className="text-slate-500">ลูกค้า:</span> {order.customer.name}

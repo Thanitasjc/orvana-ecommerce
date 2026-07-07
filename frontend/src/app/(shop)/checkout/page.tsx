@@ -15,6 +15,7 @@ import type { LoyaltySettings } from "@/lib/loyalty/types";
 import { DEFAULT_LOYALTY_SETTINGS } from "@/lib/loyalty/types";
 import { formatBaht } from "@/lib/pricing/vat";
 import { calculateShopTotals } from "@/lib/shop/orderTotals";
+import { formatShippingMethodLabel } from "@/lib/shipping/api";
 
 type Member = {
   name: string;
@@ -33,7 +34,7 @@ const PAYMENT_OPTIONS = [
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, subtotal, setItems, appliedCoupon, removeCoupon } = useCart();
+  const { items, subtotal, setItems, appliedCoupon, removeCoupon, shippingMethods, shippingLoading, selectedShippingMethodId, setSelectedShippingMethodId, shippingFee } = useCart();
   const [member, setMember] = useState<Member | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [checkoutMode, setCheckoutMode] = useState<CheckoutMode>("guest");
@@ -60,10 +61,10 @@ export default function CheckoutPage() {
       calculateShopTotals(
         subtotal,
         couponDiscount + (isMemberCheckout ? loyaltyCheckout.pointsDiscount : 0),
-        undefined,
+        shippingFee,
         appliedCoupon?.shipping_discount ?? 0,
       ),
-    [subtotal, couponDiscount, isMemberCheckout, loyaltyCheckout.pointsDiscount, appliedCoupon?.shipping_discount],
+    [subtotal, couponDiscount, isMemberCheckout, loyaltyCheckout.pointsDiscount, appliedCoupon?.shipping_discount, shippingFee],
   );
 
   useEffect(() => {
@@ -103,6 +104,11 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (!selectedShippingMethodId) {
+      setError("กรุณาเลือกวิธีจัดส่ง");
+      return;
+    }
+
     if (checkoutMode === "member" && !member) {
       setError("กรุณาเข้าสู่ระบบสมาชิก หรือเลือกชำระแบบไม่สมัคร");
       return;
@@ -123,6 +129,7 @@ export default function CheckoutPage() {
           items,
           paymentMethod,
           token,
+          selectedShippingMethodId,
           appliedCoupon?.code,
           loyaltyCheckout.pointsUsed,
         );
@@ -146,6 +153,7 @@ export default function CheckoutPage() {
           postcode: String(form.get("postcode") ?? "").trim(),
           notes: String(form.get("notes") ?? "").trim() || undefined,
         },
+        selectedShippingMethodId,
         appliedCoupon?.code,
       );
       setItems([]);
@@ -157,6 +165,7 @@ export default function CheckoutPage() {
       const apiErr = err as { message?: string; errors?: Record<string, string[]> };
       const message =
         apiErr.errors?.points_to_redeem?.[0] ??
+        apiErr.errors?.shipping_method_id?.[0] ??
         apiErr.errors?.coupon_code?.[0] ??
         apiErr.errors?.stock?.[0] ??
         apiErr.message ??
@@ -445,16 +454,26 @@ export default function CheckoutPage() {
                         <li className="tp-order-info-list-shipping">
                           <span>Shipping</span>
                           <div className="tp-order-info-list-shipping-item d-flex flex-column align-items-end">
-                            <span>
-                              <input id="flat_rate" type="radio" name="shipping" checked={totals.shippingFee > 0} readOnly />
-                              <label htmlFor="flat_rate">
-                                Flat rate: <span>฿{formatBaht(totals.shippingFee)}</span>
-                              </label>
-                            </span>
-                            <span>
-                              <input id="free_shipping" type="radio" name="shipping" checked={totals.shippingFee === 0} readOnly />
-                              <label htmlFor="free_shipping">Free shipping</label>
-                            </span>
+                            {shippingLoading ? (
+                              <span className="text-sm text-slate-500">กำลังโหลด...</span>
+                            ) : shippingMethods.length === 0 ? (
+                              <span className="text-sm text-danger">ไม่มีวิธีจัดส่ง</span>
+                            ) : (
+                              shippingMethods.map((method) => (
+                                <span key={method.id}>
+                                  <input
+                                    id={`checkout_shipping_${method.id}`}
+                                    type="radio"
+                                    name="shipping"
+                                    checked={selectedShippingMethodId === method.id}
+                                    onChange={() => setSelectedShippingMethodId(method.id)}
+                                  />
+                                  <label htmlFor={`checkout_shipping_${method.id}`}>
+                                    {formatShippingMethodLabel(method)}
+                                  </label>
+                                </span>
+                              ))
+                            )}
                           </div>
                         </li>
 
@@ -500,7 +519,7 @@ export default function CheckoutPage() {
                       <button
                         type="submit"
                         className="tp-checkout-btn w-100"
-                        disabled={loading || (checkoutMode === "member" && !member)}
+                        disabled={loading || (checkoutMode === "member" && !member) || !selectedShippingMethodId}
                       >
                         {loading
                           ? "กำลังสั่งซื้อ..."

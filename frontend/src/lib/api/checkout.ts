@@ -65,11 +65,13 @@ export async function submitGuestCheckout(
   items: CartItem[],
   paymentMethod: string,
   details: GuestCheckoutDetails,
+  shippingMethodId: number,
   couponCode?: string | null,
 ) {
   const payload: Record<string, unknown> = {
     items: await buildCheckoutItems(items),
     payment_method: paymentMethod,
+    shipping_method_id: shippingMethodId,
     ...details,
   };
 
@@ -87,12 +89,14 @@ export async function submitMemberCheckout(
   items: CartItem[],
   paymentMethod: string,
   token: string,
+  shippingMethodId: number,
   couponCode?: string | null,
   pointsToRedeem?: number,
 ) {
   const payload: Record<string, unknown> = {
     items: await buildCheckoutItems(items),
     payment_method: paymentMethod,
+    shipping_method_id: shippingMethodId,
   };
 
   if (couponCode) {

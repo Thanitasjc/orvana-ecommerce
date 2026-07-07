@@ -7,6 +7,7 @@ import { useCart } from "@/components/shop/cart/CartProvider";
 import { ShopVatSummary } from "@/components/shop/ShopVatSummary";
 import { calculateShopTotals } from "@/lib/shop/orderTotals";
 import { formatBaht } from "@/lib/pricing/vat";
+import { formatShippingMethodLabel } from "@/lib/shipping/api";
 
 export default function CartPage() {
   const {
@@ -19,6 +20,11 @@ export default function CartPage() {
     couponLoading,
     applyCoupon,
     removeCoupon,
+    shippingMethods,
+    shippingLoading,
+    selectedShippingMethodId,
+    setSelectedShippingMethodId,
+    shippingFee,
   } = useCart();
   const [couponInput, setCouponInput] = useState("");
   const totals = useMemo(
@@ -26,10 +32,10 @@ export default function CartPage() {
       calculateShopTotals(
         subtotal,
         appliedCoupon?.discount ?? 0,
-        undefined,
+        shippingFee,
         appliedCoupon?.shipping_discount ?? 0,
       ),
-    [subtotal, appliedCoupon?.discount, appliedCoupon?.shipping_discount],
+    [subtotal, appliedCoupon?.discount, appliedCoupon?.shipping_discount, shippingFee],
   );
 
   async function handleCouponSubmit(event: FormEvent<HTMLFormElement>) {
@@ -200,16 +206,29 @@ export default function CartPage() {
                 <div className="tp-cart-checkout-shipping">
                   <h4 className="tp-cart-checkout-shipping-title">Shipping</h4>
                   <div className="tp-cart-checkout-shipping-option-wrapper">
-                    <div className="tp-cart-checkout-shipping-option">
-                      <input id="flat_rate" type="radio" name="shipping" checked={totals.shippingFee > 0} readOnly />
-                      <label htmlFor="flat_rate">
-                        Flat rate: <span>฿{formatBaht(totals.shippingFee)}</span>
-                      </label>
-                    </div>
-                    <div className="tp-cart-checkout-shipping-option">
-                      <input id="free_shipping" type="radio" name="shipping" checked={totals.shippingFee === 0} readOnly />
-                      <label htmlFor="free_shipping">Free shipping</label>
-                    </div>
+                    {shippingLoading ? (
+                      <p className="text-sm text-slate-500">กำลังโหลดวิธีจัดส่ง...</p>
+                    ) : shippingMethods.length === 0 ? (
+                      <p className="text-sm text-slate-500">ไม่มีวิธีจัดส่งสำหรับยอดนี้</p>
+                    ) : (
+                      shippingMethods.map((method) => (
+                        <div className="tp-cart-checkout-shipping-option" key={method.id}>
+                          <input
+                            id={`shipping_${method.id}`}
+                            type="radio"
+                            name="shipping"
+                            checked={selectedShippingMethodId === method.id}
+                            onChange={() => setSelectedShippingMethodId(method.id)}
+                          />
+                          <label htmlFor={`shipping_${method.id}`}>
+                            {formatShippingMethodLabel(method)}
+                            {method.description ? (
+                              <span className="block text-xs text-slate-500">{method.description}</span>
+                            ) : null}
+                          </label>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
                 <ShopVatSummary totals={totals} variant="cart" />

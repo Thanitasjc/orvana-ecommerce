@@ -6,6 +6,7 @@ use App\Exceptions\InsufficientStockException;
 use App\Http\Controllers\Controller;
 use App\Services\CouponService;
 use App\Services\OrderService;
+use App\Services\ShippingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -15,6 +16,7 @@ class GuestCheckoutController extends Controller
     public function __construct(
         private readonly OrderService $orders,
         private readonly CouponService $coupons,
+        private readonly ShippingService $shipping,
     ) {}
 
     public function store(Request $request): JsonResponse
@@ -25,6 +27,7 @@ class GuestCheckoutController extends Controller
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'payment_method' => ['nullable', 'string', 'max:100'],
             'coupon_code' => ['nullable', 'string', 'max:50'],
+            'shipping_method_id' => ['required', 'integer', 'exists:shipping_methods,id'],
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
             'email' => ['required', 'email', 'max:255'],
@@ -36,7 +39,9 @@ class GuestCheckoutController extends Controller
         ]);
 
         $built = $this->orders->buildLineItems($validated['items']);
-        $shippingFee = $built['total'] > 0 && $built['total'] < 300 ? 20 : 0;
+        $shipping = $this->shipping->resolveForCheckout($validated['shipping_method_id'], $built['total']);
+        $shippingFee = $shipping['fee'];
+        $shippingMethod = $shipping['method'];
 
         $discount = 0;
         $shippingDiscount = 0;
@@ -77,6 +82,8 @@ class GuestCheckoutController extends Controller
                 shippingDiscount: $shippingDiscount,
                 pointsToRedeem: 0,
                 guestDetails: $guestDetails,
+                shippingMethodId: $shippingMethod->id,
+                shippingMethodName: $shippingMethod->name,
             );
         } catch (InsufficientStockException $e) {
             return response()->json([

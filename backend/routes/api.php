@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\V1\Admin\AdminLoyaltyController;
 use App\Http\Controllers\Api\V1\Admin\AdminOrderController;
 use App\Http\Controllers\Api\V1\Admin\AdminProductController;
+use App\Http\Controllers\Api\V1\Admin\AdminShippingMethodController;
 use App\Http\Controllers\Api\V1\CouponController;
 use App\Http\Controllers\Api\V1\BlogController;
 use App\Http\Controllers\Api\V1\CategoryController;
@@ -25,6 +26,7 @@ use App\Http\Controllers\Api\V1\Pos\PosCheckoutController;
 use App\Http\Controllers\Api\V1\Pos\PosCustomerController;
 use App\Http\Controllers\Api\V1\Pos\PosProductController;
 use App\Http\Controllers\Api\V1\ProductController;
+use App\Http\Controllers\Api\V1\ShippingController;
 use App\Http\Controllers\Api\V1\StaffAuthController;
 use Illuminate\Support\Facades\Route;
 
@@ -42,6 +44,7 @@ Route::prefix('v1')->group(function () {
   Route::get('loyalty/settings', [LoyaltyController::class, 'settings']);
   Route::post('loyalty/preview', [LoyaltyController::class, 'preview']);
   Route::post('checkout/guest', [GuestCheckoutController::class, 'store']);
+  Route::get('shipping/methods', [ShippingController::class, 'index']);
 
   Route::prefix('member')->group(function () {
     Route::post('register', [MemberAuthController::class, 'register']);
@@ -118,6 +121,10 @@ Route::prefix('v1')->group(function () {
       Route::delete('blogs/{blog}', [AdminBlogController::class, 'destroy']);
       Route::get('loyalty', [AdminLoyaltyController::class, 'show']);
       Route::patch('loyalty', [AdminLoyaltyController::class, 'update']);
+      Route::get('shipping-methods', [AdminShippingMethodController::class, 'index']);
+      Route::post('shipping-methods', [AdminShippingMethodController::class, 'store']);
+      Route::patch('shipping-methods/{shippingMethod}', [AdminShippingMethodController::class, 'update']);
+      Route::delete('shipping-methods/{shippingMethod}', [AdminShippingMethodController::class, 'destroy']);
       Route::get('customers/{customer}/loyalty-transactions', [AdminLoyaltyController::class, 'customerTransactions']);
     });
 });

@@ -38,6 +38,7 @@ export type Order = {
   shipping_province?: string | null;
   shipping_postcode?: string | null;
   shipping_notes?: string | null;
+  shipping_method_name?: string | null;
   items?: OrderItem[];
 };
 

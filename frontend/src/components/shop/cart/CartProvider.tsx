@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { buildCheckoutItems } from "@/lib/api/checkout";
 import { validateCouponCode, type ValidatedCoupon } from "@/lib/api/coupons";
-import { getShopShippingFee } from "@/lib/shop/orderTotals";
+import { fetchShippingMethods, type ShippingMethod } from "@/lib/shipping/api";
 import type { CouponDiscountType } from "@/lib/coupons/constants";
 
 export type CartItem = {
@@ -50,6 +50,11 @@ type CartContextValue = {
   appliedCoupon: AppliedCoupon | null;
   couponError: string | null;
   couponLoading: boolean;
+  shippingMethods: ShippingMethod[];
+  shippingLoading: boolean;
+  selectedShippingMethodId: number | null;
+  setSelectedShippingMethodId: (id: number) => void;
+  shippingFee: number;
   applyCoupon: (code: string) => Promise<void>;
   removeCoupon: () => void;
 };
@@ -66,6 +71,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
+  const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
+  const [shippingLoading, setShippingLoading] = useState(false);
+  const [selectedShippingMethodId, setSelectedShippingMethodId] = useState<number | null>(null);
 
   useEffect(() => {
     try {
@@ -111,6 +119,51 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
   const cartCount = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
 
+  const selectedShippingMethod = useMemo(
+    () => shippingMethods.find((method) => method.id === selectedShippingMethodId) ?? null,
+    [shippingMethods, selectedShippingMethodId],
+  );
+  const shippingFee = selectedShippingMethod?.fee ?? 0;
+
+  useEffect(() => {
+    if (subtotal <= 0) {
+      setShippingMethods([]);
+      setSelectedShippingMethodId(null);
+      return;
+    }
+
+    let cancelled = false;
+    setShippingLoading(true);
+
+    void fetchShippingMethods(subtotal)
+      .then((response) => {
+        if (cancelled) return;
+        const methods = response.data ?? [];
+        setShippingMethods(methods);
+        setSelectedShippingMethodId((current) => {
+          if (current && methods.some((method) => method.id === current)) {
+            return current;
+          }
+          return methods[0]?.id ?? null;
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setShippingMethods([]);
+          setSelectedShippingMethodId(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setShippingLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [subtotal]);
+
   const removeCoupon = useCallback(() => {
     setAppliedCoupon(null);
     setCouponError(null);
@@ -134,7 +187,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       try {
         const checkoutItems = await buildCheckoutItems(items);
-        const shippingFee = getShopShippingFee(subtotal);
         const response = await validateCouponCode(trimmed, "online", checkoutItems, { shippingFee });
         setAppliedCoupon(toAppliedCoupon(response.data));
       } catch (err: unknown) {
@@ -150,7 +202,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setCouponLoading(false);
       }
     },
-    [items, subtotal],
+    [items, shippingFee],
   );
 
   useEffect(() => {
@@ -166,7 +218,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     void (async () => {
       try {
         const checkoutItems = await buildCheckoutItems(items);
-        const shippingFee = getShopShippingFee(subtotal);
         const response = await validateCouponCode(appliedCoupon.code, "online", checkoutItems, { shippingFee });
         if (cancelled) return;
         setAppliedCoupon(toAppliedCoupon(response.data));
@@ -182,7 +233,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [items, appliedCoupon?.code, removeCoupon, subtotal]);
+  }, [items, appliedCoupon?.code, removeCoupon, shippingFee]);
 
   const value = useMemo<CartContextValue>(
     () => ({
@@ -210,10 +261,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
       appliedCoupon,
       couponError,
       couponLoading,
+      shippingMethods,
+      shippingLoading,
+      selectedShippingMethodId,
+      setSelectedShippingMethodId,
+      shippingFee,
       applyCoupon,
       removeCoupon,
     }),
-    [appliedCoupon, applyCoupon, cartCount, couponError, couponLoading, items, removeCoupon, subtotal],
+    [
+      appliedCoupon,
+      applyCoupon,
+      cartCount,
+      couponError,
+      couponLoading,
+      items,
+      removeCoupon,
+      selectedShippingMethodId,
+      shippingFee,
+      shippingLoading,
+      shippingMethods,
+      subtotal,
+    ],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

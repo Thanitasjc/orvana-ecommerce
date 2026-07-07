@@ -6,6 +6,7 @@ use App\Exceptions\InsufficientStockException;
 use App\Http\Controllers\Controller;
 use App\Services\CouponService;
 use App\Services\OrderService;
+use App\Services\ShippingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -14,6 +15,7 @@ class MemberCheckoutController extends Controller
     public function __construct(
         private readonly OrderService $orders,
         private readonly CouponService $coupons,
+        private readonly ShippingService $shipping,
     ) {}
 
     public function store(Request $request): JsonResponse
@@ -25,10 +27,13 @@ class MemberCheckoutController extends Controller
             'payment_method' => ['nullable', 'string', 'max:100'],
             'coupon_code' => ['nullable', 'string', 'max:50'],
             'points_to_redeem' => ['nullable', 'integer', 'min:0'],
+            'shipping_method_id' => ['required', 'integer', 'exists:shipping_methods,id'],
         ]);
 
         $built = $this->orders->buildLineItems($validated['items']);
-        $shippingFee = $built['total'] > 0 && $built['total'] < 300 ? 20 : 0;
+        $shipping = $this->shipping->resolveForCheckout($validated['shipping_method_id'], $built['total']);
+        $shippingFee = $shipping['fee'];
+        $shippingMethod = $shipping['method'];
 
         $discount = 0;
         $shippingDiscount = 0;
@@ -58,6 +63,8 @@ class MemberCheckoutController extends Controller
                 shippingFee: $shippingFee,
                 shippingDiscount: $shippingDiscount,
                 pointsToRedeem: $validated['points_to_redeem'] ?? 0,
+                shippingMethodId: $shippingMethod->id,
+                shippingMethodName: $shippingMethod->name,
             );
         } catch (InsufficientStockException $e) {
             return response()->json([

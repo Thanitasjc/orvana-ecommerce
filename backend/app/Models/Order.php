@@ -19,6 +19,8 @@ class Order extends Model
         'shipping_province',
         'shipping_postcode',
         'shipping_notes',
+        'shipping_method_id',
+        'shipping_method_name',
         'staff_id',
         'coupon_id',
         'coupon_code',
@@ -61,5 +63,10 @@ class Order extends Model
     public function coupon(): BelongsTo
     {
         return $this->belongsTo(Coupon::class);
+    }
+
+    public function shippingMethod(): BelongsTo
+    {
+        return $this->belongsTo(ShippingMethod::class);
     }
 }
