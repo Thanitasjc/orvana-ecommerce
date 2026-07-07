@@ -41,6 +41,47 @@ class OrderPaymentService
         return $order;
     }
 
+    public function findPosOrder(string $orderNumber): Order
+    {
+        $order = Order::query()
+            ->with(['items', 'customer', 'paymentMethod'])
+            ->where('order_number', $orderNumber)
+            ->where('channel', 'POS (หน้าร้าน)')
+            ->first();
+
+        if (! $order) {
+            throw ValidationException::withMessages([
+                'order' => ['ไม่พบออเดอร์ POS'],
+            ]);
+        }
+
+        return $order;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function formatPosOrder(Order $order): array
+    {
+        $base = $this->formatPublicOrder($order);
+
+        return array_merge($base, [
+            'channel' => $order->channel,
+            'discount' => (int) $order->discount,
+            'points_discount' => (int) $order->points_discount,
+            'points_redeemed' => (int) $order->points_redeemed,
+            'points_earned' => (int) $order->points_earned,
+            'customer' => $order->customer ? [
+                'id' => $order->customer->id,
+                'name' => $order->customer->name,
+                'phone' => $order->customer->phone,
+                'email' => $order->customer->email,
+                'points' => (int) $order->customer->points,
+                'tier' => $order->customer->tier,
+            ] : null,
+        ]);
+    }
+
     /**
      * @return array<string, mixed>
      */

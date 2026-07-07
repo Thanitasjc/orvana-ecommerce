@@ -1,6 +1,12 @@
 import { apiFetch, apiUpload } from "@/lib/api/client";
 
-export type PaymentMethodType = "bank_transfer" | "cod" | "omise_card" | "omise_promptpay";
+export type PaymentMethodType =
+  | "bank_transfer"
+  | "cod"
+  | "omise_card"
+  | "omise_promptpay"
+  | "pos_cash"
+  | "pos_card";
 
 export type BankTransferConfig = {
   bank_name?: string;

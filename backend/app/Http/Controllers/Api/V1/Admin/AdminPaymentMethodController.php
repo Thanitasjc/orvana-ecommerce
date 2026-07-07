@@ -64,7 +64,7 @@ class AdminPaymentMethodController extends Controller
     {
         $rules = [
             'name' => [$partial ? 'sometimes' : 'required', 'string', 'max:120'],
-            'type' => [$partial ? 'sometimes' : 'required', Rule::in(['bank_transfer', 'cod', 'omise_card', 'omise_promptpay'])],
+            'type' => [$partial ? 'sometimes' : 'required', Rule::in(['bank_transfer', 'cod', 'omise_card', 'omise_promptpay', 'pos_cash', 'pos_card'])],
             'description' => ['nullable', 'string', 'max:1000'],
             'instructions' => ['nullable', 'string', 'max:2000'],
             'config' => ['nullable', 'array'],

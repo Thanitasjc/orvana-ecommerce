@@ -83,6 +83,7 @@ class OmiseService
     {
         $paid = ($charge['status'] ?? '') === 'successful';
         $pending = in_array($charge['status'] ?? '', ['pending', 'processing'], true);
+        $isPos = str_contains((string) $order->channel, 'POS');
 
         $metadata = array_merge($order->payment_metadata ?? [], [
             'omise' => [
@@ -97,7 +98,7 @@ class OmiseService
             'omise_charge_id' => $charge['id'] ?? $order->omise_charge_id,
             'payment_metadata' => $metadata,
             'payment_status' => $paid ? 'paid' : ($pending ? 'pending' : 'pending'),
-            'status' => $paid ? 'processing' : 'pending',
+            'status' => $paid ? ($isPos ? 'completed' : 'processing') : 'pending',
         ]);
 
         if ($paid && $order->customer_id) {

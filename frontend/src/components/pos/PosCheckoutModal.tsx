@@ -5,14 +5,15 @@ import type { PosCustomer } from "@/lib/api/pos";
 import { PosTotalsBreakdown } from "@/components/pos/PosTotalsBreakdown";
 import type { LoyaltySettings } from "@/lib/loyalty/types";
 import { DEFAULT_LOYALTY_SETTINGS } from "@/lib/loyalty/types";
+import type { PaymentMethod } from "@/lib/payment/api";
 import type { VatBreakdown } from "@/lib/pricing/vat";
-
-const PAYMENT_METHODS = ["PromptPay", "บัตรเครดิต", "เงินสด"] as const;
 
 type PosCheckoutModalProps = {
   open: boolean;
   totals: VatBreakdown;
   customer: PosCustomer | null;
+  paymentMethods: PaymentMethod[];
+  paymentMethodsLoading: boolean;
   loyaltySettings?: LoyaltySettings;
   pointsToRedeem: number;
   pointsDiscount: number;
@@ -21,13 +22,15 @@ type PosCheckoutModalProps = {
   submitting: boolean;
   error: string | null;
   onClose: () => void;
-  onConfirm: (payload: { paymentMethod: string; amountPaid?: number }) => void;
+  onConfirm: (payload: { paymentMethodId: number; amountPaid?: number }) => void;
 };
 
 export function PosCheckoutModal({
   open,
   totals,
   customer,
+  paymentMethods,
+  paymentMethodsLoading,
   loyaltySettings = DEFAULT_LOYALTY_SETTINGS,
   pointsToRedeem,
   pointsDiscount,
@@ -38,21 +41,25 @@ export function PosCheckoutModal({
   onClose,
   onConfirm,
 }: PosCheckoutModalProps) {
-  const [paymentMethod, setPaymentMethod] = useState<string>("เงินสด");
+  const [selectedMethodId, setSelectedMethodId] = useState<number | null>(null);
   const [amountPaid, setAmountPaid] = useState("");
 
+  const selectedMethod = paymentMethods.find((method) => method.id === selectedMethodId) ?? null;
+  const isCash = selectedMethod?.type === "pos_cash";
+
   useEffect(() => {
-    if (open) {
-      setPaymentMethod("เงินสด");
-      setAmountPaid(String(totals.total));
-    }
-  }, [open, totals.total]);
+    if (!open) return;
+
+    const defaultMethod = paymentMethods[0] ?? null;
+    setSelectedMethodId(defaultMethod?.id ?? null);
+    setAmountPaid(String(totals.total));
+  }, [open, paymentMethods, totals.total]);
 
   if (!open) return null;
 
   const paid = Number(amountPaid) || 0;
-  const change = paymentMethod === "เงินสด" ? Math.max(0, paid - totals.total) : 0;
-  const cashInvalid = paymentMethod === "เงินสด" && paid < totals.total;
+  const change = isCash ? Math.max(0, paid - totals.total) : 0;
+  const cashInvalid = isCash && paid < totals.total;
   const maxRedeemHint = loyaltySettings.redeem_enabled
     ? `ขั้นต่ำ ${loyaltySettings.min_redeem_points} แต้ม · ${loyaltySettings.redeem_points_per_baht} แต้ม = ฿1`
     : null;
@@ -96,26 +103,37 @@ export function PosCheckoutModal({
         ) : null}
 
         <div className="space-y-2">
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">ช่องทางชำระเงิน</label>
-          <div className="grid grid-cols-3 gap-2">
-            {PAYMENT_METHODS.map((method) => (
-              <button
-                key={method}
-                type="button"
-                onClick={() => setPaymentMethod(method)}
-                className={`rounded-xl border py-2 text-xs font-bold transition ${
-                  paymentMethod === method
-                    ? "border-emerald-700 bg-emerald-600 text-white"
-                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                }`}
-              >
-                {method}
-              </button>
-            ))}
-          </div>
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
+            ช่องทางชำระเงิน
+          </label>
+          {paymentMethodsLoading ? (
+            <p className="text-sm text-slate-500">กำลังโหลดวิธีชำระ...</p>
+          ) : paymentMethods.length === 0 ? (
+            <p className="text-sm text-red-600">ยังไม่มีวิธีชำระสำหรับ POS — ตั้งค่าใน Admin</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {paymentMethods.map((method) => (
+                <button
+                  key={method.id}
+                  type="button"
+                  onClick={() => setSelectedMethodId(method.id)}
+                  className={`rounded-xl border px-2 py-2 text-xs font-bold transition ${
+                    selectedMethodId === method.id
+                      ? "border-emerald-700 bg-emerald-600 text-white"
+                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  {method.name}
+                </button>
+              ))}
+            </div>
+          )}
+          {selectedMethod?.description ? (
+            <p className="text-xs text-slate-500">{selectedMethod.description}</p>
+          ) : null}
         </div>
 
-        {paymentMethod === "เงินสด" ? (
+        {isCash ? (
           <div className="space-y-1.5">
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
               ยอดรับชำระจากลูกค้า (บาท)
@@ -136,6 +154,12 @@ export function PosCheckoutModal({
           </div>
         ) : null}
 
+        {selectedMethod?.type === "omise_promptpay" ? (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            หลังยืนยัน ระบบจะสร้าง QR PromptPay ให้ลูกค้าสแกนชำระ
+          </p>
+        ) : null}
+
         {customer && loyaltySettings.enabled ? (
           <div className="flex items-center justify-between rounded-xl border border-emerald-100 bg-emerald-50/50 p-2.5 text-xs">
             <span className="font-bold text-slate-800">{customer.name}</span>
@@ -147,16 +171,20 @@ export function PosCheckoutModal({
 
         <button
           type="button"
-          disabled={submitting || cashInvalid}
+          disabled={submitting || cashInvalid || !selectedMethodId || paymentMethods.length === 0}
           onClick={() =>
             onConfirm({
-              paymentMethod,
-              amountPaid: paymentMethod === "เงินสด" ? paid : undefined,
+              paymentMethodId: selectedMethodId!,
+              amountPaid: isCash ? paid : undefined,
             })
           }
           className="w-full rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white shadow transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {submitting ? "กำลังบันทึก..." : "ยืนยันการทำรายการและเปิดใบเสร็จ"}
+          {submitting
+            ? "กำลังบันทึก..."
+            : selectedMethod?.type === "omise_promptpay"
+              ? "ยืนยันและสร้าง QR"
+              : "ยืนยันการทำรายการและเปิดใบเสร็จ"}
         </button>
       </div>
     </div>

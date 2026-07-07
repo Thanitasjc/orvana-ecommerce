@@ -46,4 +46,9 @@ class PaymentMethod extends Model
     {
         return $this->type === 'bank_transfer';
     }
+
+    public function isPosCash(): bool
+    {
+        return $this->type === 'pos_cash';
+    }
 }

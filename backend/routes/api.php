@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\V1\MemberAuthController;
 use App\Http\Controllers\Api\V1\MemberCheckoutController;
 use App\Http\Controllers\Api\V1\MemberLoyaltyController;
 use App\Http\Controllers\Api\V1\Pos\PosCheckoutController;
+use App\Http\Controllers\Api\V1\Pos\PosOrderPaymentController;
 use App\Http\Controllers\Api\V1\Pos\PosCustomerController;
 use App\Http\Controllers\Api\V1\Pos\PosProductController;
 use App\Http\Controllers\Api\V1\ProductController;
@@ -82,9 +83,13 @@ Route::prefix('v1')->group(function () {
     ->middleware(['auth:sanctum', 'staff', 'staff.role:cashier,admin'])
     ->group(function () {
       Route::get('products', [PosProductController::class, 'index']);
+      Route::get('payment-methods', [PosOrderPaymentController::class, 'paymentMethods']);
       Route::get('customers/search', [PosCustomerController::class, 'search']);
       Route::post('customers', [PosCustomerController::class, 'store']);
       Route::post('checkout', [PosCheckoutController::class, 'store']);
+      Route::get('orders/{orderNumber}', [PosOrderPaymentController::class, 'show']);
+      Route::post('orders/{orderNumber}/omise/charge', [PosOrderPaymentController::class, 'chargeOmise']);
+      Route::get('orders/{orderNumber}/omise/refresh', [PosOrderPaymentController::class, 'refreshOmise']);
     });
 
   Route::prefix('admin')

@@ -9,6 +9,8 @@ const TYPE_OPTIONS: { value: PaymentMethodType; label: string }[] = [
   { value: "cod", label: "เก็บเงินปลายทาง" },
   { value: "omise_card", label: "บัตรเครดิต (Omise)" },
   { value: "omise_promptpay", label: "PromptPay (Omise)" },
+  { value: "pos_cash", label: "เงินสด (POS)" },
+  { value: "pos_card", label: "บัตรหน้าร้าน (POS)" },
 ];
 
 type AdminPaymentFormModalProps = {

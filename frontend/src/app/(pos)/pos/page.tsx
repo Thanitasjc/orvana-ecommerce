@@ -5,19 +5,23 @@ import { useCallback, useEffect, useState } from "react";
 import { PosAddCustomerModal } from "@/components/pos/PosAddCustomerModal";
 import { PosCartSidebar } from "@/components/pos/PosCartSidebar";
 import { PosCheckoutModal } from "@/components/pos/PosCheckoutModal";
+import { PosPromptPayModal } from "@/components/pos/PosPromptPayModal";
 import { PosProductGrid } from "@/components/pos/PosProductGrid";
 import { PosReceiptModal, type PosReceiptData } from "@/components/pos/PosReceiptModal";
 import { PosVariationPickerModal } from "@/components/pos/PosVariationPickerModal";
-import { usePosCart } from "@/components/pos/usePosCart";
+import { usePosCart, type PosCartItem } from "@/components/pos/usePosCart";
 import {
   fetchCategories,
+  fetchPosPaymentMethods,
   fetchPosProducts,
   submitPosCheckout,
   type Category,
   type PosCustomer,
+  type PosOrder,
   type PosProduct,
   type PosVariation,
 } from "@/lib/api/pos";
+import type { PaymentMethod } from "@/lib/payment/api";
 import { getPosSessionId } from "@/lib/pos/session";
 import { deleteCookie, getCookie, STAFF_ROLE_KEY, STAFF_TOKEN_KEY } from "@/lib/auth/cookies";
 import { calculatePosTotals } from "@/lib/pos/pricing";
@@ -35,6 +39,17 @@ export default function PosPage() {
   const [selectedCustomer, setSelectedCustomer] = useState<PosCustomer | null>(null);
   const [showCheckout, setShowCheckout] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(false);
+  const [promptPayOrder, setPromptPayOrder] = useState<{
+    orderNumber: string;
+    snapshot: {
+      items: PosCartItem[];
+      totals: ReturnType<typeof calculateTotalsWithDiscount>;
+      customerName: string;
+      pointsEarned?: number;
+    };
+  } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [receipt, setReceipt] = useState<PosReceiptData | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -147,7 +162,47 @@ export default function PosPage() {
     showToast(`เพิ่ม ${pickerProduct.name} (${variation.color}/${variation.size}) ลงตะกร้าแล้ว`);
   }
 
-  async function handleCheckoutConfirm(payload: { paymentMethod: string; amountPaid?: number }) {
+  useEffect(() => {
+    const token = getCookie(STAFF_TOKEN_KEY);
+    if (!token) return;
+
+    setPaymentMethodsLoading(true);
+    fetchPosPaymentMethods(token)
+      .then((res) => setPaymentMethods(res.data ?? []))
+      .catch(() => setToast("โหลดวิธีชำระไม่สำเร็จ"))
+      .finally(() => setPaymentMethodsLoading(false));
+  }, []);
+
+  function buildReceipt(
+    order: PosOrder,
+    snapshotItems: PosCartItem[],
+    snapshotTotals: ReturnType<typeof calculateTotalsWithDiscount>,
+    options?: { amountPaid?: number; change?: number; customerName?: string; pointsEarned?: number },
+  ): PosReceiptData {
+    const combinedDiscount = (order.discount ?? snapshotTotals.discount) + (order.points_discount ?? 0);
+    const receiptTotals = calculatePosTotals(snapshotTotals.subtotal, combinedDiscount);
+
+    return {
+      orderNumber: order.order_number,
+      createdAt: order.created_at
+        ? new Date(order.created_at).toLocaleString("th-TH")
+        : new Date().toLocaleString("th-TH"),
+      customerName: options?.customerName ?? order.customer?.name ?? "Walk-in",
+      paymentMethod: order.payment_method ?? "—",
+      items: snapshotItems,
+      discount: combinedDiscount,
+      subtotal: snapshotTotals.subtotal,
+      amountBeforeVat: receiptTotals.amountBeforeVat,
+      vatAmount: receiptTotals.vatAmount,
+      total: Number(order.total),
+      amountPaid: options?.amountPaid,
+      change: options?.change,
+      pointsEarned: options?.pointsEarned,
+      pointsRedeemed: order.points_redeemed ?? undefined,
+    };
+  }
+
+  async function handleCheckoutConfirm(payload: { paymentMethodId: number; amountPaid?: number }) {
     const token = getCookie(STAFF_TOKEN_KEY);
     if (!token) return;
 
@@ -158,6 +213,9 @@ export default function PosPage() {
     const snapshotTotals = { ...checkoutTotals };
     const snapshotTotal = snapshotTotals.total;
     const snapshotPointsToRedeem = loyaltyCheckout.pointsUsed;
+    const selectedMethod = paymentMethods.find((method) => method.id === payload.paymentMethodId);
+    const isCash = selectedMethod?.type === "pos_cash";
+    const isPromptPay = selectedMethod?.type === "omise_promptpay";
 
     try {
       const checkoutPayload = {
@@ -166,7 +224,8 @@ export default function PosPage() {
           quantity: item.quantity,
         })),
         customer_id: selectedCustomer?.id,
-        payment_method: payload.paymentMethod,
+        payment_method_id: payload.paymentMethodId,
+        amount_paid: isCash ? payload.amountPaid : undefined,
         pos_session_id: getPosSessionId(),
         points_to_redeem: snapshotPointsToRedeem > 0 ? snapshotPointsToRedeem : undefined,
         ...(cart.appliedCoupon
@@ -175,48 +234,74 @@ export default function PosPage() {
       };
 
       const res = await submitPosCheckout(checkoutPayload, token);
-
       const order = res.data;
-      const paid = payload.amountPaid ?? snapshotTotal;
-      const change = payload.paymentMethod === "เงินสด" ? Math.max(0, paid - snapshotTotal) : 0;
-      const orderTotal = Number(order.total);
-      const combinedDiscount = (order.discount ?? snapshotTotals.discount) + (order.points_discount ?? 0);
-      const receiptTotals = calculatePosTotals(snapshotTotals.subtotal, combinedDiscount);
-
-      setReceipt({
-        orderNumber: order.order_number,
-        createdAt: order.created_at
-          ? new Date(order.created_at).toLocaleString("th-TH")
-          : new Date().toLocaleString("th-TH"),
-        customerName: order.customer?.name ?? selectedCustomer?.name ?? "Walk-in",
-        paymentMethod: order.payment_method ?? payload.paymentMethod,
-        items: snapshotItems,
-        discount: combinedDiscount,
-        subtotal: snapshotTotals.subtotal,
-        amountBeforeVat: receiptTotals.amountBeforeVat,
-        vatAmount: receiptTotals.vatAmount,
-        total: orderTotal,
-        amountPaid: payload.paymentMethod === "เงินสด" ? paid : undefined,
-        change: payload.paymentMethod === "เงินสด" ? change : undefined,
-        pointsEarned: selectedCustomer ? (order.points_earned ?? loyaltyCheckout.pointsEarned) : undefined,
-        pointsRedeemed: order.points_redeemed ?? undefined,
-      });
+      const snapshotCustomerName = order.customer?.name ?? selectedCustomer?.name ?? "Walk-in";
+      const snapshotPointsEarned = selectedCustomer ? loyaltyCheckout.pointsEarned : undefined;
 
       cart.clearCart();
       setSelectedCustomer(null);
       setPointsToRedeem(0);
       setShowCheckout(false);
       await loadProducts();
+
+      if (isPromptPay && order.payment_status !== "paid") {
+        setPromptPayOrder({
+          orderNumber: order.order_number,
+          snapshot: {
+            items: snapshotItems,
+            totals: snapshotTotals,
+            customerName: snapshotCustomerName,
+            pointsEarned: snapshotPointsEarned,
+          },
+        });
+        return;
+      }
+
+      const paid = payload.amountPaid ?? snapshotTotal;
+      const change = isCash ? Math.max(0, paid - snapshotTotal) : 0;
+      const metadata = order.payment_metadata as { pos?: { amount_paid?: number; change?: number } } | null;
+
+      setReceipt(
+        buildReceipt(order, snapshotItems, snapshotTotals, {
+          amountPaid: isCash ? (metadata?.pos?.amount_paid ?? paid) : undefined,
+          change: isCash ? (metadata?.pos?.change ?? change) : undefined,
+          customerName: snapshotCustomerName,
+          pointsEarned: order.points_earned ?? snapshotPointsEarned,
+        }),
+      );
     } catch (error) {
       let message = "ชำระเงินไม่สำเร็จ";
       if (error && typeof error === "object") {
         const apiError = error as { message?: string; errors?: Record<string, string[]> };
-        message = apiError.errors?.points_to_redeem?.[0] ?? apiError.errors?.stock?.[0] ?? apiError.message ?? message;
+        message =
+          apiError.errors?.payment_method_id?.[0] ??
+          apiError.errors?.points_to_redeem?.[0] ??
+          apiError.errors?.stock?.[0] ??
+          apiError.message ??
+          message;
       }
       setCheckoutError(message);
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function handlePromptPayPaid(order: PosOrder) {
+    if (!promptPayOrder) return;
+
+    setReceipt(
+      buildReceipt(order, promptPayOrder.snapshot.items, promptPayOrder.snapshot.totals, {
+        customerName: order.customer?.name ?? promptPayOrder.snapshot.customerName,
+        pointsEarned: order.points_earned ?? promptPayOrder.snapshot.pointsEarned,
+      }),
+    );
+    setPromptPayOrder(null);
+    showToast("ชำระเงิน PromptPay สำเร็จ");
+  }
+
+  function handlePromptPayCancel() {
+    setPromptPayOrder(null);
+    showToast("ออเดอร์ถูกบันทึกแล้ว — รอชำระ PromptPay");
   }
 
   function closeReceipt() {
@@ -320,6 +405,8 @@ export default function PosPage() {
         open={showCheckout}
         totals={checkoutTotals}
         customer={selectedCustomer}
+        paymentMethods={paymentMethods}
+        paymentMethodsLoading={paymentMethodsLoading}
         loyaltySettings={loyaltySettings}
         pointsToRedeem={pointsToRedeem}
         pointsDiscount={loyaltyCheckout.pointsDiscount}
@@ -330,6 +417,16 @@ export default function PosPage() {
         onClose={() => setShowCheckout(false)}
         onConfirm={handleCheckoutConfirm}
       />
+
+      {promptPayOrder ? (
+        <PosPromptPayModal
+          open
+          orderNumber={promptPayOrder.orderNumber}
+          token={getCookie(STAFF_TOKEN_KEY) ?? ""}
+          onPaid={handlePromptPayPaid}
+          onCancel={handlePromptPayCancel}
+        />
+      ) : null}
 
       <PosVariationPickerModal
         product={pickerProduct}

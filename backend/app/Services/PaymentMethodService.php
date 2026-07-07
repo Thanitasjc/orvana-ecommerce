@@ -50,7 +50,13 @@ class PaymentMethodService
      */
     public function initialOrderStatuses(PaymentMethod $method, string $channel): array
     {
-        if (! str_contains($channel, 'Online')) {
+        $isOnline = str_contains($channel, 'Online');
+
+        if (! $isOnline) {
+            if ($method->isGateway()) {
+                return ['status' => 'pending', 'payment_status' => 'pending'];
+            }
+
             return ['status' => 'completed', 'payment_status' => 'paid'];
         }
 

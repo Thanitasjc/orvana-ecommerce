@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api/client";
 import type { ProductGallerySlide } from "@/lib/api/products";
+import type { OmiseChargeResult, PaymentMethod, PaymentMethodType } from "@/lib/payment/api";
 
 export type PosVariation = {
   id: number;
@@ -39,15 +40,16 @@ export type PosCheckoutPayload = {
   customer_id?: number;
   discount?: number;
   coupon_code?: string;
-  payment_method?: string;
+  payment_method_id: number;
+  amount_paid?: number;
   pos_session_id?: string;
   points_to_redeem?: number;
 };
 
 export type PosOrderItem = {
   product_name: string;
-  color: string;
-  size: string;
+  color?: string;
+  size?: string;
   price: number;
   quantity: number;
 };
@@ -56,11 +58,17 @@ export type PosOrder = {
   id: number;
   order_number: string;
   total: number;
+  status: string;
+  payment_status: string;
   discount: number;
   points_discount?: number;
   points_redeemed?: number;
   points_earned?: number;
   payment_method?: string | null;
+  payment_method_id?: number | null;
+  payment_method_type?: PaymentMethodType;
+  payment_metadata?: Record<string, unknown> | null;
+  omise_charge_id?: string | null;
   created_at?: string;
   customer?: PosCustomer | null;
   items: PosOrderItem[];
@@ -85,6 +93,14 @@ export async function fetchPosProducts(
 
 export async function fetchCategories() {
   return apiFetch<{ data: Category[] }>("/categories");
+}
+
+export async function fetchPosPaymentMethods(token: string) {
+  return apiFetch<{
+    data: PaymentMethod[];
+    omise_public_key: string | null;
+    omise_configured: boolean;
+  }>("/pos/payment-methods", { token });
 }
 
 export async function searchPosCustomers(query: string, token: string) {
@@ -113,4 +129,26 @@ export async function submitPosCheckout(payload: PosCheckoutPayload, token: stri
     token,
     body: JSON.stringify(payload),
   });
+}
+
+export async function fetchPosOrder(orderNumber: string, token: string) {
+  return apiFetch<{ data: PosOrder }>(`/pos/orders/${orderNumber}`, { token });
+}
+
+export async function chargePosPromptPay(orderNumber: string, token: string) {
+  return apiFetch<{ data: PosOrder; charge: OmiseChargeResult }>(
+    `/pos/orders/${orderNumber}/omise/charge`,
+    {
+      method: "POST",
+      token,
+      body: JSON.stringify({}),
+    },
+  );
+}
+
+export async function refreshPosPromptPay(orderNumber: string, token: string) {
+  return apiFetch<{ data: PosOrder; charge: OmiseChargeResult }>(
+    `/pos/orders/${orderNumber}/omise/refresh`,
+    { token },
+  );
 }
