@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(OmnichannelSeeder::class);
+        $this->call(PaymentMethodSeeder::class);
         $this->call(CouponSeeder::class);
         $this->call(BlogSeeder::class);
     }

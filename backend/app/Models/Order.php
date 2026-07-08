@@ -29,6 +29,7 @@ class Order extends Model
         'points_discount',
         'points_earned',
         'loyalty_reversed_at',
+        'stock_restored_at',
         'shipping_fee',
         'shipping_discount',
         'total',
@@ -50,6 +51,7 @@ class Order extends Model
     {
         return [
             'loyalty_reversed_at' => 'datetime',
+            'stock_restored_at' => 'datetime',
             'payment_metadata' => 'array',
         ];
     }

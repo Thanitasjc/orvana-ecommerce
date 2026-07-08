@@ -1,8 +1,6 @@
 # AESTHETE Fashion — ระบบ Omnichannel (POS + E-Commerce)
 
-โปรเจกต์ร้านแฟชั่นแบบ **Omnichannel**: สต็อกและออเดอร์รวมศูนย์ที่ Laravel ขายได้ทั้ง **ร้านออนไลน์** (Shofy template) และ **POS หน้าร้าน** พร้อม **หลังบ้าน Admin**
-
-อ้างอิง logic จาก `omnichannel_fashion_pos_e_commerce.tsx` และ UI ร้านจากโฟลเดอร์ Shofy HTML template
+โปรเจกต์ร้านแฟชั่นแบบ **Omnichannel**: สต็อกและออเดอร์รวมศูนย์ที่ Laravel API ขายได้ทั้ง **ร้านออนไลน์** (Shofy template), **POS หน้าร้าน** และ **หลังบ้าน Admin**
 
 ---
 
@@ -10,10 +8,11 @@
 
 ```
 project1/
-├── frontend/          # Next.js 16 (App Router) — หน้าบ้าน + POS + Admin
-├── backend/           # Laravel 12 API — ธุรกิจ + ฐานข้อมูล
-├── shofy-multipurpose-ecommerce-html-template-.../   # Template ต้นฉบับ (อ้างอิง)
-└── omnichannel_fashion_pos_e_commerce.tsx            # Prototype React (อ้างอิง logic)
+├── frontend/          # Next.js 16 (App Router) — ร้าน + POS + Admin
+├── backend/           # Laravel 12 API
+├── scripts/           # deploy, sync Supabase
+├── render.yaml        # Render Blueprint (API)
+└── DEPLOY.md          # คู่มือ deploy แบบละเอียด
 ```
 
 ---
@@ -22,49 +21,77 @@ project1/
 
 | ชั้น | เทคโนโลยี | หน้าที่ |
 |------|-----------|--------|
-| ร้านออนไลน์ | Next.js + Shofy CSS | ลูกค้าทั่วไป / สมาชิก |
+| ร้านออนไลน์ | Next.js + Shofy CSS | ลูกค้า / สมาชิก |
 | POS | Next.js + Tailwind | พนักงานขายหน้าร้าน |
 | Admin | Next.js + Tailwind | ผู้ดูแลระบบ |
-| API | Laravel + Sanctum | สินค้า, สต็อก, ออเดอร์, loyalty |
+| API | Laravel 12 + Sanctum | สินค้า, สต็อก, ออเดอร์, ชำระเงิน, loyalty |
 
-### การแยก Login (สำคัญ)
+### การแยก Login
 
-| ระบบ | URL | ผู้ใช้ | เข้าได้ |
-|------|-----|--------|--------|
-| สมาชิก | `/login`, `/account` | ลูกค้า (`customers`) | บัญชีตัวเองเท่านั้น |
-| POS | `/pos/login` → `/pos` | พนักงาน `cashier` หรือ `admin` | ขายหน้าร้าน |
-| Admin | `/admin/login` → `/admin` | `admin` เท่านั้น | รายงาน / คลัง |
+| ระบบ | URL | ผู้ใช้ |
+|------|-----|--------|
+| สมาชิก | `/login`, `/account` | ลูกค้า (`customers`) |
+| POS | `/pos/login` → `/pos` | `cashier` หรือ `admin` |
+| Admin | `/admin/login` → `/admin` | `admin` เท่านั้น |
 
-**สมาชิกไม่สามารถเข้า POS หรือ Admin** — แยก token, middleware และ guard คนละชุด
+สมาชิกเข้า POS/Admin ไม่ได้ — แยก token และ middleware คนละชุด
+
+---
+
+## ฟีเจอร์หลัก (ที่ทำแล้ว)
+
+### ร้านออนไลน์
+- หน้าแรก + CMS (hero, header, curated products)
+- สินค้า / SKU / gallery, ตะกร้า, wishlist, compare
+- Checkout สมาชิก + Guest, คูปอง, วิธีจัดส่ง
+- ชำระเงิน: โอนธนาคาร (อัปสลิป), COD, Omise บัตร, PromptPay QR
+- บัญชีสมาชิก, แต้มสะสม, blog
+
+### POS หน้าร้าน
+- ค้นหาสินค้า, ตะกร้า, สมาชิก, คูปอง, สแกนคูปอง
+- ชำระเงิน: เงินสด (ทอน), บัตรหน้าร้าน, PromptPay QR
+- ใบเสร็จ + พิมพ์
+
+### Admin
+- Dashboard, สินค้า, หมวด, ออเดอร์ (export CSV), สมาชิก
+- คูปอง, จัดส่ง, ช่องทางชำระเงิน, แต้มสะสม
+- CMS หน้าร้าน, บทความ
+
+### Omnichannel
+- สต็อกกลาง (`product_variations`) — ตัดตอน checkout ด้วย transaction + `lockForUpdate()`
+- **คืนสต็อก** เมื่อ Admin ตั้งออเดอร์เป็น `cancelled` หรือ `payment_status = refunded` (ครั้งเดียวต่อออเดอร์, บันทึก `stock_restored_at`)
+- Loyalty: สะสม/แลกแต้ม, tier, คืนแต้มเมื่อยกเลิก
 
 ---
 
 ## ความต้องการของระบบ
 
-- PHP 8.2+
-- Composer
-- Node.js 20+
-- npm
+- PHP 8.2+, Composer
+- Node.js 20+, npm
+- PostgreSQL (production) หรือ SQLite/MySQL (local)
 
 ---
 
-## การติดตั้ง
+## การติดตั้ง (Local)
 
-### 1. Backend (Laravel)
+### 1. Backend
 
 ```bash
 cd backend
 composer install
-cp .env.example .env   # ถ้ายังไม่มี .env
+cp .env.example .env
 php artisan key:generate
 php artisan migrate --seed
 php artisan serve
 ```
 
-API จะรันที่: **http://localhost:8000**  
-Prefix: **http://localhost:8000/api/v1**
+API: **http://localhost:8000/api/v1**
 
-### 2. Frontend (Next.js)
+`.env` สำคัญ:
+- `OMISE_PUBLIC_KEY` / `OMISE_SECRET_KEY` — ใส่ test keys เพื่อแสดงบัตร/PromptPay บน checkout (ดู `.env.example`)
+- `FRONTEND_URL`, `SANCTUM_STATEFUL_DOMAINS` — สำหรับ CORS/cookie
+
+### 2. Frontend
 
 ```bash
 cd frontend
@@ -73,59 +100,36 @@ cp .env.local.example .env.local
 npm run dev
 ```
 
-เว็บจะรันที่: **http://localhost:3000**
-
-### 3. Assets Shofy
-
-ไฟล์ CSS/รูปถูก copy ไปที่ `frontend/public/assets/` แล้ว (จาก template Shofy)
+เว็บ: **http://localhost:3000**  
+`NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1`
 
 ---
 
 ## บัญชีทดสอบ (หลัง seed)
 
-| บทบาท | อีเมล | รหัสผ่าน |
-|--------|-------|----------|
-| Admin | `admin@aesthete.local` | `password` |
-http://localhost:3000/admin/login
-| พนักงาน POS | `cashier@aesthete.local` | `password` |
-http://localhost:3000/pos/login
+| บทบาท | อีเมล | รหัสผ่าน | URL |
+|--------|-------|----------|-----|
+| Admin | `admin@aesthete.local` | `password` | http://localhost:3000/admin/login |
+| POS | `cashier@aesthete.local` | `password` | http://localhost:3000/pos/login |
+| สมาชิก | `ananya@mail.com` | `password` | http://localhost:3000/login |
 
-| สมาชิก | `ananya@mail.com` | `password` |
-
-สมาชิกคนอื่น: `panuwat@mail.com`, `nathrada@mail.com`, `worawut@mail.com` (รหัสผ่าน `password`)
+สมาชิกอื่น: `panuwat@mail.com`, `nathrada@mail.com`, `worawut@mail.com` (รหัส `password`)
 
 ---
 
 ## API หลัก (v1)
 
 ### สาธารณะ
+`GET /health`, `/categories`, `/products`, `/products/{slug}`, `/shipping/methods`, `/payment/methods`, `/checkout/guest`, `/checkout/orders/{orderNumber}`, Omise/slip endpoints
 
-- `GET /api/v1/categories`
-- `GET /api/v1/products`
-- `GET /api/v1/products/{slug}`
+### สมาชิก
+`POST /member/register|login`, `GET /member/me|orders`, `POST /member/checkout`
 
-### สมาชิก (`Authorization: Bearer` + token ของ Customer)
+### POS (staff)
+`GET /pos/products`, `/pos/payment-methods`, `/pos/customers/search`, `POST /pos/checkout`, Omise charge/refresh
 
-- `POST /api/v1/member/register`
-- `POST /api/v1/member/login`
-- `GET /api/v1/member/me`
-- `GET /api/v1/member/orders`
-- `POST /api/v1/member/checkout`
-
-### พนักงาน
-
-- `POST /api/v1/staff/pos/login` — cashier / admin
-- `POST /api/v1/staff/admin/login` — admin เท่านั้น
-
-### POS (ต้อง login พนักงาน)
-
-- `GET /api/v1/pos/products`
-- `GET /api/v1/pos/customers/search?q=`
-- `POST /api/v1/pos/checkout`
-
-### Admin
-
-- `GET /api/v1/admin/dashboard`
+### Admin (admin only)
+Dashboard, CRUD สินค้า/หมวด/สมาชิก/คูปอง/จัดส่ง/ชำระเงิน/บล็อก, CMS, loyalty, `PATCH /admin/orders/{id}` (ยกเลิก/คืนเงิน → คืนสต็อก+แต้ม)
 
 ---
 
@@ -133,32 +137,11 @@ http://localhost:3000/pos/login
 
 | Path | คำอธิบาย |
 |------|----------|
-| `/` | หน้าแรกร้าน (Shofy) |
-| `/shop` | รายการสินค้า |
-| `/products/[slug]` | รายละเอียดสินค้า + SKU |
-| `/login`, `/register` | สมาชิก |
-| `/account` | หลังบ้านสมาชิก (ต้อง login) |
+| `/`, `/shop`, `/products/[slug]` | ร้านออนไลน์ |
+| `/cart`, `/checkout`, `/checkout/pay/[orderNumber]` | ตะกร้า + ชำระเงิน |
+| `/account`, `/login`, `/register` | สมาชิก |
 | `/pos/login`, `/pos` | POS |
-| `/admin/login`, `/admin` | Admin |
-
----
-
-## Omnichannel — สต็อกกลาง
-
-- ทุก SKU อยู่ในตาราง `product_variations`
-- เมื่อ checkout (Online หรือ POS) ระบบใช้ **DB Transaction** + `lockForUpdate()` ตัดสต็อก
-- สมาชิกได้แต้ม: ทุก 100 บาท = 1 แต้ม, อัป tier ตามยอดสะสม (Silver / Gold / Platinum)
-- บริการหลัก: `InventoryService`, `OrderService`, `LoyaltyService`
-
----
-
-## Phase ถัดไป (แนะนำ)
-
-1. แปลง section ใน `index-2.html` เป็น React components เต็มรูปแบบ
-2. ตะกร้าสินค้า (Zustand) + checkout ฝั่งร้าน
-3. POS เต็มรูปแบบจาก prototype (ตะกร้า, ใบเสร็จ, เลือกสมาชิก)
-4. Admin CRUD สินค้า / หมวด / รายงาน
-5. Payment gateway, อีเมลแจ้งออเดอร์
+| `/admin/login`, `/admin/*` | Admin |
 
 ---
 
@@ -166,18 +149,19 @@ http://localhost:3000/pos/login
 
 | Service | URL | Auto-deploy |
 |---------|-----|-------------|
-| Frontend (Vercel) | https://frontend-beta-teal-71.vercel.app | Push `main` → GitHub → Vercel |
-| API (Render) | https://aesthete-api.onrender.com | Push `main` → GitHub → Render |
+| Frontend (Vercel) | https://frontend-beta-teal-71.vercel.app | Push `main` |
+| API (Render) | https://aesthete-api.onrender.com | Push `main` |
+| Database | Supabase PostgreSQL | migrate ด้วยมือ |
 
-**Vercel:** โปรเจกต์ `frontend` ตั้ง Root Directory = `frontend` แล้ว — push ไป `main` จะ build อัตโนมัติ
+ตรวจ build API: `GET https://aesthete-api.onrender.com/api/v1/health`
 
 ```bash
-# Deploy frontend ด้วยมือ (ถ้าจำเป็น)
-cd frontend && npx vercel deploy --prod --yes
-
-# Migrate DB บน Supabase (คูปอง / schema ใหม่)
-cd backend && php scripts/run-coupon-migrations.php
+# Migrate บน production (จากเครื่องที่มี DATABASE_URL)
+cd backend
+$env:DB_SCHEMA="aesthete"; php artisan migrate --force
 ```
+
+รายละเอียดเพิ่ม: [DEPLOY.md](./DEPLOY.md)
 
 ---
 
@@ -185,30 +169,40 @@ cd backend && php scripts/run-coupon-migrations.php
 
 ```bash
 # Backend
-cd backend && php artisan migrate:fresh --seed
+cd backend && php artisan migrate --seed
+cd backend && php artisan test
 cd backend && php artisan serve
 
 # Frontend
 cd frontend && npm run dev
 cd frontend && npm run build
 
-# Sync local catalog (products, categories) to Supabase production
+# Sync catalog ไป Supabase
 .\scripts\sync-to-supabase.ps1
-.\scripts\sync-to-supabase.ps1 -DryRun
-.\scripts\sync-to-supabase.ps1 -DeployFrontend
 ```
+
+---
+
+## Phase ถัดไป (แนะนำ)
+
+1. Omise **Live** keys + webhook `charge.complete`
+2. Object storage (S3 / Supabase Storage) สำหรับสลิปและรูป
+3. ตั้งค่า Mail (อีเมลยืนยันออเดอร์)
+4. Workflow อนุมัติสลิปโอนใน Admin
+5. Forgot/change password, ที่อยู่สมาชิก
+6. Automated tests + CI
 
 ---
 
 ## หมายเหตุ
 
-- API ใช้ **Bearer token** (ไม่ใช้ Sanctum CSRF cookie) — ถ้าเจอ `CSRF token mismatch` ตรวจว่าไม่ได้เปิด `EnsureFrontendRequestsAreStateful` บน API routes ใน `bootstrap/app.php`
-- Template Shofy ต้นฉบับอยู่ที่ `shofy-multipurpose-ecommerce-html-template-2025-09-17-10-18-00-utc/` — ไม่แก้ไขโดยตรง
-- Prototype `omnichannel_fashion_pos_e_commerce.tsx` เก็บไว้เป็น reference สำหรับ POS/Admin UI
+- API ใช้ **Bearer token** — ไม่ใช้ Sanctum CSRF cookie บน API routes
+- Omise ตอนนี้ใช้ **Test Mode** — สแกน PromptPay จ่ายจริงต้องเปลี่ยน Live keys หลัง Omise อนุมัติบัญชี
+- Template Shofy อยู่ใน `shofy-multipurpose-ecommerce-html-template-.../` (อ้างอิงเท่านั้น)
 
 ---
 
 ## ใบอนุญาต
 
 โค้ดใน `frontend/` และ `backend/` เป็นของโปรเจกต์นี้  
-Template Shofy เป็นไฟล์จากผู้ขาย template — ตรวจสอบ license ของ template ก่อนใช้งานเชิงพาณิชย์
+Template Shofy — ตรวจสอบ license ก่อนใช้เชิงพาณิชย์

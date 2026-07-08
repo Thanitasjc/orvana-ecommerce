@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Services\InventoryService;
 use App\Services\LoyaltyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,7 +13,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminOrderController extends Controller
 {
-    public function __construct(private readonly LoyaltyService $loyalty) {}
+    public function __construct(
+        private readonly LoyaltyService $loyalty,
+        private readonly InventoryService $inventory,
+    ) {}
     public function index(Request $request): JsonResponse
     {
         return response()->json($this->filteredQuery($request)->paginate(15));
@@ -49,6 +53,7 @@ class AdminOrderController extends Controller
         DB::transaction(function () use ($order, $validated, $shouldReverse) {
             if ($shouldReverse) {
                 $this->loyalty->reverseOrder($order);
+                $this->inventory->restoreFromOrder($order->fresh(['items']));
             }
 
             $wasPending = $order->payment_status === 'pending';
