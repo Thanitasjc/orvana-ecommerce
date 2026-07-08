@@ -1,9 +1,13 @@
+import { defaultProductImageForId, resolveProductImage } from "@/lib/api/products";
+
 export type OrderItem = {
+  product_id?: number | null;
   product_name: string;
   quantity: number;
   price: number;
   color?: string | null;
   size?: string | null;
+  product?: { id: number; image?: string | null } | null;
 };
 
 export type OrderCustomer = {
@@ -88,6 +92,11 @@ export function orderProductTitle(order: Order) {
   }
 
   return `${first.product_name} +${items.length - 1} more`;
+}
+
+export function orderItemImage(item: OrderItem): string {
+  const productId = item.product_id ?? item.product?.id ?? 0;
+  return resolveProductImage(item.product?.image, defaultProductImageForId(productId));
 }
 
 export function formatMoney(value: number | string) {

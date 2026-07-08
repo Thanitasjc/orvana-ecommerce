@@ -5,6 +5,7 @@ import {
   formatMoney,
   ORDER_STATUS_OPTIONS,
   orderCustomerName,
+  orderItemImage,
   PAYMENT_STATUS_OPTIONS,
 } from "@/lib/orders/types";
 import { OrderTotalsSummary } from "@/components/orders/OrderTotalsSummary";
@@ -148,6 +149,7 @@ export function AdminOrderDetailModal({
             <table className="min-w-full text-left text-sm">
               <thead className="border-b border-slate-800 bg-slate-900/50 text-slate-400">
                 <tr>
+                  <th className="px-4 py-2 font-medium">รูป</th>
                   <th className="px-4 py-2 font-medium">สินค้า</th>
                   <th className="px-4 py-2 font-medium">ตัวเลือก</th>
                   <th className="px-4 py-2 font-medium">จำนวน</th>
@@ -158,13 +160,20 @@ export function AdminOrderDetailModal({
               <tbody>
                 {(order.items ?? []).length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-6 text-center text-slate-500">
+                    <td colSpan={6} className="px-4 py-6 text-center text-slate-500">
                       ไม่มีรายการสินค้า
                     </td>
                   </tr>
                 ) : (
                   (order.items ?? []).map((item, index) => (
                     <tr key={`${order.id}-item-${index}`} className="border-b border-slate-800 last:border-b-0">
+                      <td className="px-4 py-3">
+                        <img
+                          src={orderItemImage(item)}
+                          alt={item.product_name}
+                          className="h-12 w-12 rounded-lg border border-slate-700 bg-slate-800 object-cover"
+                        />
+                      </td>
                       <td className="px-4 py-3 text-white">{item.product_name}</td>
                       <td className="px-4 py-3 text-slate-300">
                         {[item.color, item.size].filter(Boolean).join(" / ") || "-"}

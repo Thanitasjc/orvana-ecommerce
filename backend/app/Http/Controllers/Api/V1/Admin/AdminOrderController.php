@@ -26,7 +26,7 @@ class AdminOrderController extends Controller
     {
         return response()->json([
             'data' => $order->load([
-                'items',
+                'items.product:id,image',
                 'customer:id,name,email,phone',
                 'paymentMethod',
             ]),
@@ -70,7 +70,7 @@ class AdminOrderController extends Controller
 
         return response()->json([
             'data' => $order->fresh()->load([
-                'items',
+                'items.product:id,image',
                 'customer:id,name,email,phone',
             ]),
         ]);
@@ -129,7 +129,7 @@ class AdminOrderController extends Controller
     {
         $query = Order::query()
             ->with([
-                'items',
+                'items.product:id,image',
                 'customer:id,name,email,phone',
             ])
             ->latest();

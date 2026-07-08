@@ -9,6 +9,7 @@ import { getCookie, STAFF_TOKEN_KEY } from "@/lib/auth/cookies";
 import {
   formatMoney,
   ORDER_STATUS_OPTIONS,
+  orderItemImage,
   orderProductTitle,
   orderCustomerName,
   PAYMENT_STATUS_OPTIONS,
@@ -34,6 +35,39 @@ function channelBadge(channel: string) {
   if (channel === "Online Store") return "bg-sky-500/20 text-sky-300";
   if (channel.includes("POS")) return "bg-emerald-500/20 text-emerald-300";
   return "bg-slate-500/20 text-slate-300";
+}
+
+function OrderProductCell({ order }: { order: Order }) {
+  const items = order.items ?? [];
+  if (items.length === 0) {
+    return <span className="text-slate-500">-</span>;
+  }
+
+  const visibleItems = items.slice(0, 2);
+  const overflow = items.length - visibleItems.length;
+
+  return (
+    <div className="flex min-w-[200px] items-center gap-3">
+      <div className="flex shrink-0 items-center">
+        {visibleItems.map((item, index) => (
+          <img
+            key={`${order.id}-thumb-${index}`}
+            src={orderItemImage(item)}
+            alt={item.product_name}
+            className={`h-10 w-10 rounded-lg border border-slate-700 bg-slate-800 object-cover ${
+              index > 0 ? "-ml-2 ring-2 ring-slate-900" : ""
+            }`}
+          />
+        ))}
+        {overflow > 0 ? (
+          <span className="-ml-2 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800 text-[10px] font-semibold text-slate-300 ring-2 ring-slate-900">
+            +{overflow}
+          </span>
+        ) : null}
+      </div>
+      <span className="min-w-0 text-slate-300">{orderProductTitle(order)}</span>
+    </div>
+  );
 }
 
 export function AdminOrdersSection() {
@@ -198,7 +232,9 @@ export function AdminOrdersSection() {
                         </span>
                       </td>
                       <td className="px-3 py-3 text-slate-300">{orderCustomerName(order)}</td>
-                      <td className="px-3 py-3 text-slate-300">{orderProductTitle(order)}</td>
+                      <td className="px-3 py-3">
+                        <OrderProductCell order={order} />
+                      </td>
                       <td className="px-3 py-3">
                         <select
                           className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200"
