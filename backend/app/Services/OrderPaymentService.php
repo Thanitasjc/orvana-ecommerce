@@ -12,7 +12,7 @@ class OrderPaymentService
     public function findPublicOrder(string $orderNumber, ?string $email, ?Customer $member): Order
     {
         $order = Order::query()
-            ->with(['items', 'paymentMethod'])
+            ->with(['items', 'paymentMethod', 'customer'])
             ->where('order_number', $orderNumber)
             ->first();
 
@@ -22,7 +22,7 @@ class OrderPaymentService
             ]);
         }
 
-        if ($member) {
+        if ($member instanceof Customer) {
             if ((int) $order->customer_id !== (int) $member->id) {
                 throw ValidationException::withMessages([
                     'order' => ['ไม่มีสิทธิ์เข้าถึงออเดอร์นี้'],
@@ -32,7 +32,9 @@ class OrderPaymentService
             return $order;
         }
 
-        if (! $email || strcasecmp($email, (string) $order->guest_email) !== 0) {
+        $orderEmail = $order->guest_email ?? $order->customer?->email;
+
+        if (! $email || ! $orderEmail || strcasecmp($email, $orderEmail) !== 0) {
             throw ValidationException::withMessages([
                 'email' => ['อีเมลไม่ตรงกับออเดอร์'],
             ]);

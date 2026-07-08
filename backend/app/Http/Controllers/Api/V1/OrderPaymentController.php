@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\Order;
 use App\Services\OmiseService;
 use App\Services\OrderPaymentService;
@@ -22,7 +23,7 @@ class OrderPaymentController extends Controller
         $order = $this->orderPayments->findPublicOrder(
             $orderNumber,
             $request->string('email')->toString() ?: null,
-            $request->user(),
+            $this->resolveMember($request),
         );
 
         return response()->json([
@@ -40,7 +41,7 @@ class OrderPaymentController extends Controller
         $order = $this->orderPayments->findPublicOrder(
             $orderNumber,
             $validated['email'] ?? null,
-            $request->user(),
+            $this->resolveMember($request),
         );
 
         if ($order->paymentMethod?->type !== 'bank_transfer') {
@@ -81,7 +82,7 @@ class OrderPaymentController extends Controller
         $order = $this->orderPayments->findPublicOrder(
             $orderNumber,
             $validated['email'] ?? null,
-            $request->user(),
+            $this->resolveMember($request),
         );
 
         if ($order->payment_status === 'paid') {
@@ -122,7 +123,7 @@ class OrderPaymentController extends Controller
         $order = $this->orderPayments->findPublicOrder(
             $orderNumber,
             $request->string('email')->toString() ?: null,
-            $request->user(),
+            $this->resolveMember($request),
         );
 
         if (! $order->omise_charge_id) {
@@ -138,5 +139,12 @@ class OrderPaymentController extends Controller
             'data' => $this->orderPayments->formatPublicOrder($order),
             'charge' => $charge,
         ]);
+    }
+
+    private function resolveMember(Request $request): ?Customer
+    {
+        $user = $request->user('sanctum') ?? $request->user();
+
+        return $user instanceof Customer ? $user : null;
     }
 }
