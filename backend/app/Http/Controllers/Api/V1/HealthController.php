@@ -7,7 +7,7 @@ use Illuminate\Http\JsonResponse;
 
 class HealthController extends Controller
 {
-    public const BUILD_ID = '2026-07-08-member-pay-email';
+    public const BUILD_ID = '2026-07-10-coupons-pgsql';
 
     public function show(): JsonResponse
     {

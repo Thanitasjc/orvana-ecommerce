@@ -18,7 +18,7 @@ class CouponController extends Controller
     public function index(): JsonResponse
     {
         $coupons = Coupon::query()
-            ->where('is_active', true)
+            ->active()
             ->orderByDesc('created_at')
             ->get()
             ->map(fn (Coupon $coupon) => [
