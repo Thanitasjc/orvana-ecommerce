@@ -65,7 +65,9 @@ export function PosReceiptModal({ receipt, onClose }: PosReceiptModalProps) {
               <div className="max-w-[70%]">
                 <p className="truncate font-bold">{item.name}</p>
                 <p className="text-[9px] text-slate-400">
-                  ({item.color} / {item.size}) x {item.quantity}
+                  {[item.color, item.size].filter((part) => part?.trim()).length
+                    ? `(${[item.color, item.size].filter((part) => part?.trim()).join(" / ")}) x ${item.quantity}`
+                    : `x ${item.quantity}`}
                 </p>
               </div>
               <span className="font-bold">฿{(item.price * item.quantity).toLocaleString("th-TH")}</span>

@@ -83,9 +83,21 @@ export function PosProductGrid({
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
           {products.map((product) => {
             const totalStock = getProductTotalStock(product);
-            const colorCount = new Set(product.variations.map((v) => v.color.trim())).size;
-            const sizeCount = new Set(product.variations.map((v) => v.size.trim())).size;
+            const colorCount = new Set(
+              product.variations.map((v) => v.color.trim()).filter(Boolean),
+            ).size;
+            const sizeCount = new Set(
+              product.variations.map((v) => v.size.trim()).filter(Boolean),
+            ).size;
             const image = resolveProductImage(product.image, defaultProductImageForId(product.id));
+            const optionLabel =
+              colorCount > 0 && sizeCount > 0
+                ? `${colorCount} สี / ${sizeCount} ไซส์`
+                : colorCount > 0
+                  ? `${colorCount} สี`
+                  : sizeCount > 0
+                    ? `${sizeCount} ไซส์`
+                    : `${product.variations.length} SKU`;
 
             return (
               <button
@@ -107,7 +119,7 @@ export function PosProductGrid({
                 <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-1.5">
                   <span className="text-sm font-black text-slate-900">฿{product.price.toLocaleString("th-TH")}</span>
                   <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
-                    {colorCount} สี / {sizeCount} ไซส์
+                    {optionLabel}
                   </span>
                 </div>
               </button>

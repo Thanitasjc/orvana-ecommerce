@@ -272,22 +272,23 @@ export function AdminProductFormModal({
                 + เพิ่มตัวเลือก
               </button>
             </div>
+            <p className="mb-2 text-xs text-slate-500">
+              สีและไซส์ไม่บังคับ — ใส่ได้เมื่อต้องการ หรือใส่อย่างอื่นแทนได้ บังคับเฉพาะสต็อก
+            </p>
 
             <div className="space-y-2">
               {form.variations.map((row) => (
                 <div key={row.key} className="grid gap-2 rounded-xl border border-slate-800 bg-slate-900/40 p-3 sm:grid-cols-5">
                   <input
-                    required
                     value={row.color}
                     onChange={(event) => updateVariation(row.key, "color", event.target.value)}
-                    placeholder="สี"
+                    placeholder="สี / ตัวเลือก (ไม่บังคับ)"
                     className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-white"
                   />
                   <input
-                    required
                     value={row.size}
                     onChange={(event) => updateVariation(row.key, "size", event.target.value)}
-                    placeholder="ไซส์"
+                    placeholder="ไซส์ / ตัวเลือก (ไม่บังคับ)"
                     className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-white"
                   />
                   <input
@@ -302,7 +303,7 @@ export function AdminProductFormModal({
                     min={0}
                     value={row.stock}
                     onChange={(event) => updateVariation(row.key, "stock", event.target.value)}
-                    placeholder="สต็อก"
+                    placeholder="สต็อก *"
                     className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-white"
                   />
                   <button

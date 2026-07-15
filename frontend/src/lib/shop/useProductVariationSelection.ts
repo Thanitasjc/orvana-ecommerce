@@ -20,6 +20,14 @@ export type ProductWithVariations = {
   variations?: ProductVariationSelection[] | null;
 };
 
+function normalizeOption(value?: string | null) {
+  return value?.trim() ?? "";
+}
+
+export function uniqueVariationSizes(sizes: Array<string | null | undefined>) {
+  return [...new Set(sizes.map((value) => normalizeOption(value)).filter(Boolean))];
+}
+
 export function useProductVariationSelection(product: ProductWithVariations | null) {
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
@@ -36,27 +44,44 @@ export function useProductVariationSelection(product: ProductWithVariations | nu
     [product?.variations],
   );
 
+  const uniqueSizes = useMemo(
+    () => uniqueVariationSizes(product?.variations?.map((variation) => variation.size) ?? []),
+    [product?.variations],
+  );
+
+  const hasColorOptions = uniqueColors.length > 0;
+  const hasSizeOptions = uniqueSizes.length > 0;
+
   const sizesForColor = useMemo(() => {
+    if (!hasSizeOptions) return [] as string[];
+
     const sizes =
       product?.variations
-        ?.filter((variation) => variation.color === selectedColor)
-        .map((variation) => variation.size?.trim())
+        ?.filter((variation) => {
+          if (!hasColorOptions) return true;
+          return normalizeOption(variation.color) === selectedColor;
+        })
+        .map((variation) => normalizeOption(variation.size))
         .filter(Boolean) ?? [];
 
-    return [...new Set(sizes)] as string[];
-  }, [product?.variations, selectedColor]);
+    return [...new Set(sizes)];
+  }, [hasColorOptions, hasSizeOptions, product?.variations, selectedColor]);
 
   const selectedVariation = useMemo(() => {
     if (!product?.variations?.length) return null;
 
-    return (
-      product.variations.find(
-        (variation) => variation.color === selectedColor && variation.size === selectedSize,
-      ) ??
-      product.variations.find((variation) => variation.color === selectedColor) ??
-      product.variations[0]
-    );
-  }, [product?.variations, selectedColor, selectedSize]);
+    const matched = product.variations.find((variation) => {
+      const color = normalizeOption(variation.color);
+      const size = normalizeOption(variation.size);
+
+      const colorOk = hasColorOptions ? color === selectedColor : true;
+      const sizeOk = hasSizeOptions ? size === selectedSize : true;
+
+      return colorOk && sizeOk;
+    });
+
+    return matched ?? product.variations[0];
+  }, [hasColorOptions, hasSizeOptions, product?.variations, selectedColor, selectedSize]);
 
   const activeSlide = gallery[activeImage] ?? gallery[0];
   const displayImage =
@@ -67,22 +92,31 @@ export function useProductVariationSelection(product: ProductWithVariations | nu
     if (!product) return;
 
     const firstVariation = product.variations?.[0];
-    const initialColor = firstVariation?.color ?? uniqueColors[0] ?? "";
-    const initialSize = firstVariation?.size ?? "";
+    const initialColor = hasColorOptions
+      ? (normalizeOption(firstVariation?.color) || uniqueColors[0] || "")
+      : "";
+    const initialSize = hasSizeOptions
+      ? (normalizeOption(firstVariation?.size) || uniqueSizes[0] || "")
+      : "";
 
     setSelectedColor(initialColor);
     setSelectedSize(initialSize);
     setActiveImage(galleryIndexForColor(initialColor, uniqueColors, gallery.length));
     setQuantity(1);
-  }, [gallery.length, product, uniqueColors]);
+  }, [gallery.length, hasColorOptions, hasSizeOptions, product, uniqueColors, uniqueSizes]);
 
   function handleColorSelect(color: string) {
     setSelectedColor(color);
 
+    if (!hasSizeOptions) {
+      setActiveImage(galleryIndexForColor(color, uniqueColors, gallery.length));
+      return;
+    }
+
     const nextSizes =
       product?.variations
-        ?.filter((variation) => variation.color === color)
-        .map((variation) => variation.size?.trim())
+        ?.filter((variation) => normalizeOption(variation.color) === color)
+        .map((variation) => normalizeOption(variation.size))
         .filter(Boolean) ?? [];
 
     if (!nextSizes.includes(selectedSize)) {
@@ -95,15 +129,19 @@ export function useProductVariationSelection(product: ProductWithVariations | nu
   function handleGallerySelect(index: number) {
     setActiveImage(index);
 
+    if (!hasColorOptions) return;
+
     const matchedColor = uniqueColors[index];
     if (!matchedColor) return;
 
     setSelectedColor(matchedColor);
 
+    if (!hasSizeOptions) return;
+
     const nextSizes =
       product?.variations
-        ?.filter((variation) => variation.color === matchedColor)
-        .map((variation) => variation.size?.trim())
+        ?.filter((variation) => normalizeOption(variation.color) === matchedColor)
+        .map((variation) => normalizeOption(variation.size))
         .filter(Boolean) ?? [];
 
     if (!nextSizes.includes(selectedSize)) {
@@ -120,6 +158,9 @@ export function useProductVariationSelection(product: ProductWithVariations | nu
     setSelectedSize,
     gallery,
     uniqueColors,
+    uniqueSizes,
+    hasColorOptions,
+    hasSizeOptions,
     sizesForColor,
     selectedVariation,
     displayImage,

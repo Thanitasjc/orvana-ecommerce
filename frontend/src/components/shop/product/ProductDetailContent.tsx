@@ -63,6 +63,8 @@ export function ProductDetailContent({ product }: { product: ProductDetailData }
     setSelectedSize,
     gallery,
     uniqueColors,
+    hasColorOptions,
+    hasSizeOptions,
     sizesForColor,
     selectedVariation,
     displayImage,
@@ -105,30 +107,32 @@ export function ProductDetailContent({ product }: { product: ProductDetailData }
                   <span className="tp-product-details-price new-price">฿{unitPrice.toLocaleString("th-TH")}</span>
                 </div>
 
-                {uniqueColors.length > 0 ? (
+                {hasColorOptions || hasSizeOptions ? (
                   <div className="tp-product-details-variation mb-30">
-                    <div className="tp-product-details-variation-item">
-                      <h4 className="tp-product-details-variation-title">Color :</h4>
-                      <div className="tp-product-details-variation-list">
-                        {uniqueColors.map((color) => (
-                          <button
-                            key={color}
-                            type="button"
-                            className={`color tp-color-variation-btn ${selectedColor === color ? "active" : ""}`}
-                            onClick={() => handleColorSelect(color)}
-                          >
-                            <span
-                              data-bg-color={colorNameToHex(color)}
-                              style={{ backgroundColor: colorNameToHex(color) }}
-                            />
-                            <span className="tp-color-variation-tootltip">{color}</span>
-                          </button>
-                        ))}
+                    {hasColorOptions ? (
+                      <div className="tp-product-details-variation-item">
+                        <h4 className="tp-product-details-variation-title">Color :</h4>
+                        <div className="tp-product-details-variation-list">
+                          {uniqueColors.map((color) => (
+                            <button
+                              key={color}
+                              type="button"
+                              className={`color tp-color-variation-btn ${selectedColor === color ? "active" : ""}`}
+                              onClick={() => handleColorSelect(color)}
+                            >
+                              <span
+                                data-bg-color={colorNameToHex(color)}
+                                style={{ backgroundColor: colorNameToHex(color) }}
+                              />
+                              <span className="tp-color-variation-tootltip">{color}</span>
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    ) : null}
 
-                    {sizesForColor.length > 1 ? (
-                      <div className="tp-product-details-variation-item mt-20">
+                    {hasSizeOptions && sizesForColor.length > 0 ? (
+                      <div className={`tp-product-details-variation-item ${hasColorOptions ? "mt-20" : ""}`}>
                         <h4 className="tp-product-details-variation-title">Size :</h4>
                         <div className="tp-product-details-variation-list d-flex flex-wrap" style={{ gap: "8px" }}>
                           {sizesForColor.map((size) => (
@@ -150,6 +154,12 @@ export function ProductDetailContent({ product }: { product: ProductDetailData }
                         SKU: <span>{selectedVariation.sku}</span>
                       </p>
                     ) : null}
+                  </div>
+                ) : selectedVariation?.sku ? (
+                  <div className="tp-product-details-variation mb-30">
+                    <p className="mb-0">
+                      SKU: <span>{selectedVariation.sku}</span>
+                    </p>
                   </div>
                 ) : null}
 

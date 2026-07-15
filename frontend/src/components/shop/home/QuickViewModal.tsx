@@ -146,30 +146,34 @@ export function QuickViewModal({ product, onClose }: QuickViewModalProps) {
                   <span className="tp-product-details-price new-price">{formatPriceTHB(unitPrice)}</span>
                 </div>
 
-                {selection.uniqueColors.length > 0 ? (
+                {selection.hasColorOptions || selection.hasSizeOptions ? (
                   <div className="tp-product-details-variation mb-30">
-                    <div className="tp-product-details-variation-item">
-                      <h4 className="tp-product-details-variation-title">Color :</h4>
-                      <div className="tp-product-details-variation-list">
-                        {selection.uniqueColors.map((color) => (
-                          <button
-                            key={color}
-                            type="button"
-                            className={`color tp-color-variation-btn ${selection.selectedColor === color ? "active" : ""}`}
-                            onClick={() => selection.handleColorSelect(color)}
-                          >
-                            <span
-                              data-bg-color={colorNameToHex(color)}
-                              style={{ backgroundColor: colorNameToHex(color) }}
-                            />
-                            <span className="tp-color-variation-tootltip">{color}</span>
-                          </button>
-                        ))}
+                    {selection.hasColorOptions ? (
+                      <div className="tp-product-details-variation-item">
+                        <h4 className="tp-product-details-variation-title">Color :</h4>
+                        <div className="tp-product-details-variation-list">
+                          {selection.uniqueColors.map((color) => (
+                            <button
+                              key={color}
+                              type="button"
+                              className={`color tp-color-variation-btn ${selection.selectedColor === color ? "active" : ""}`}
+                              onClick={() => selection.handleColorSelect(color)}
+                            >
+                              <span
+                                data-bg-color={colorNameToHex(color)}
+                                style={{ backgroundColor: colorNameToHex(color) }}
+                              />
+                              <span className="tp-color-variation-tootltip">{color}</span>
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    ) : null}
 
-                    {selection.sizesForColor.length > 1 ? (
-                      <div className="tp-product-details-variation-item mt-20">
+                    {selection.hasSizeOptions && selection.sizesForColor.length > 0 ? (
+                      <div
+                        className={`tp-product-details-variation-item ${selection.hasColorOptions ? "mt-20" : ""}`}
+                      >
                         <h4 className="tp-product-details-variation-title">Size :</h4>
                         <div className="tp-product-details-variation-list d-flex flex-wrap" style={{ gap: "8px" }}>
                           {selection.sizesForColor.map((size) => (

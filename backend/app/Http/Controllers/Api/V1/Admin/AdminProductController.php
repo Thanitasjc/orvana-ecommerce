@@ -168,8 +168,8 @@ class AdminProductController extends Controller
             'is_featured' => ['nullable', 'boolean'],
             'variations' => [$product ? 'sometimes' : 'required', 'array', 'min:1'],
             'variations.*.id' => ['nullable', 'integer', 'exists:product_variations,id'],
-            'variations.*.color' => ['required_with:variations', 'string', 'max:100'],
-            'variations.*.size' => ['required_with:variations', 'string', 'max:50'],
+            'variations.*.color' => ['nullable', 'string', 'max:100'],
+            'variations.*.size' => ['nullable', 'string', 'max:50'],
             'variations.*.sku' => ['nullable', 'string', 'max:120'],
             'variations.*.stock' => ['required_with:variations', 'integer', 'min:0'],
         ]);
@@ -206,8 +206,8 @@ class AdminProductController extends Controller
         $normalized = [];
 
         foreach ($variations as $index => $row) {
-            $color = trim((string) $row['color']);
-            $size = trim((string) $row['size']);
+            $color = trim((string) ($row['color'] ?? ''));
+            $size = trim((string) ($row['size'] ?? ''));
 
             $normalized[] = [
                 'id' => $row['id'] ?? null,
@@ -228,7 +228,7 @@ class AdminProductController extends Controller
 
         if (count($combinationKeys) !== count(array_unique($combinationKeys))) {
             throw \Illuminate\Validation\ValidationException::withMessages([
-                'variations' => ['มีสีและไซส์ซ้ำกัน กรุณาตรวจสอบอีกครั้ง'],
+                'variations' => ['มีตัวเลือกซ้ำกัน กรุณาตรวจสอบอีกครั้ง'],
             ]);
         }
 
@@ -250,7 +250,13 @@ class AdminProductController extends Controller
         $keptIds = [];
 
         foreach ($normalized as $row) {
-            $sku = $row['sku'] ?? strtoupper(Str::slug($product->slug.'-'.$row['color'].'-'.$row['size']));
+            $sku = $row['sku'] ?? null;
+            if (! filled($sku)) {
+                $parts = array_filter([$product->slug, $row['color'], $row['size']], fn ($part) => filled($part));
+                $sku = $parts !== []
+                    ? strtoupper(Str::slug(implode('-', $parts)))
+                    : strtoupper(Str::slug($product->slug).'-'.($row['index'] + 1));
+            }
 
             $payload = [
                 'color' => $row['color'],

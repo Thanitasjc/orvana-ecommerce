@@ -159,7 +159,13 @@ export default function PosPage() {
       return;
     }
 
-    showToast(`เพิ่ม ${pickerProduct.name} (${variation.color}/${variation.size}) ลงตะกร้าแล้ว`);
+    showToast(
+      `เพิ่ม ${pickerProduct.name}${
+        [variation.color, variation.size].filter((part) => part?.trim()).length
+          ? ` (${[variation.color, variation.size].filter((part) => part?.trim()).join(" / ")})`
+          : ""
+      } ลงตะกร้าแล้ว`,
+    );
   }
 
   useEffect(() => {
