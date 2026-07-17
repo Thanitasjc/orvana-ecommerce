@@ -41,9 +41,9 @@ services:
       - key: UPLOAD_DISK
         value: s3
       - key: AWS_ACCESS_KEY_ID
-        sync: false
+        value: cab84d3be8d2146da2496487ef1491bd
       - key: AWS_SECRET_ACCESS_KEY
-        sync: false
+        value: 677f4f9668545278fbda8b1d0b90907d9a744338330aa4340d33bfe2fa71a86c
       - key: AWS_DEFAULT_REGION
         value: ap-northeast-1
       - key: AWS_BUCKET

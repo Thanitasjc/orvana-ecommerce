@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Storage;
 
 class HealthController extends Controller
 {
-    public const BUILD_ID = '2026-07-17-s3-diag2';
+    public const BUILD_ID = '2026-07-17-s3-key-in-blueprint';
 
     public function show(): JsonResponse
     {
