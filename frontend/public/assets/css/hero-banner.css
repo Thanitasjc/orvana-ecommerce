@@ -31,7 +31,6 @@ section.hero-slider .slide img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transform: scale(1.05);
 }
 
 section.hero-slider .hero-media iframe.hero-youtube {
@@ -46,14 +45,6 @@ section.hero-slider .hero-media iframe.hero-youtube {
   transform: translate(-50%, -50%);
   border: 0;
   pointer-events: none;
-}
-
-section.hero-slider .slide::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.45));
-  z-index: 1;
 }
 
 section.hero-slider .hero-content {
