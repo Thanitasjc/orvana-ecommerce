@@ -20,7 +20,7 @@ export default async function ShopLayout({
           <WishlistProvider>
             <ShopStyles />
             <Header initialCms={headerCms} />
-            <main>{children}</main>
+            <main className="overflow-x-clip">{children}</main>
             <Footer />
           </WishlistProvider>
         </CompareProvider>
