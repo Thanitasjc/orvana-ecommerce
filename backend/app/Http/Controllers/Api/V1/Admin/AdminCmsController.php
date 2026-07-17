@@ -23,6 +23,13 @@ class AdminCmsController extends Controller
         $validated = $request->validate([
             'heroSlides' => ['required', 'array'],
             'customerFavorite' => ['required', 'array'],
+            'productTabs' => ['sometimes', 'array'],
+            'productTabs.*.id' => ['required', 'string'],
+            'productTabs.*.label' => ['required', 'string', 'max:100'],
+            'productTabs.*.categorySlugs' => ['sometimes', 'array'],
+            'productTabs.*.categorySlugs.*' => ['string', 'max:255'],
+            'productTabs.*.sortOrder' => ['sometimes', 'integer'],
+            'productTabs.*.enabled' => ['sometimes', 'boolean'],
             'featuredProducts' => ['required', 'array'],
         ]);
 

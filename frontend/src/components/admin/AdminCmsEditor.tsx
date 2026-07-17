@@ -5,7 +5,8 @@ import { AdminPanel } from "@/components/admin/AdminPanel";
 import { AdminHeaderCmsEditor } from "@/components/admin/cms/AdminHeaderCmsEditor";
 import { AdminCmsHeroFormModal } from "@/components/admin/cms/AdminCmsHeroFormModal";
 import { AdminCmsProductPickerModal } from "@/components/admin/cms/AdminCmsProductPickerModal";
-import { fetchAdminProducts, type AdminProduct } from "@/lib/api/adminProducts";
+import { fetchAdminProducts, fetchCategories, type AdminProduct } from "@/lib/api/adminProducts";
+import type { AdminCategory } from "@/lib/api/adminCategories";
 import { defaultProductImageForId, formatPriceTHB, resolveProductImage } from "@/lib/api/products";
 import { fetchAdminHomepageCms, saveAdminHomepageCms } from "@/lib/api/cms";
 import {
@@ -15,6 +16,7 @@ import {
   type HeroSlideRecord,
   type HomepageCmsState,
   type ProductCurationItem,
+  type ProductTabConfig,
 } from "@/lib/cms/homepageCms";
 import { getCookie, STAFF_TOKEN_KEY } from "@/lib/auth/cookies";
 
@@ -39,8 +41,8 @@ const TABS: { key: CmsTab; label: string; title: string; description: string; ad
     key: "customer_favorite",
     label: "Customer Favorite",
     title: "Customer Favorite",
-    description: "เลือกสินค้าแสดงในแท็บ Customer Favorite บนหน้าแรก",
-    addLabel: "+ เพิ่มสินค้า",
+    description: "จัดการแท็บและหมวดหมู่สินค้าในส่วน Customer Favorite บนหน้าแรก (สินค้าดึงอัตโนมัติตามหมวดที่เลือก)",
+    addLabel: "+ เพิ่มแถบ",
   },
   {
     key: "featured_products",
@@ -102,6 +104,7 @@ export function AdminCmsEditor() {
   const [activeTab, setActiveTab] = useState<CmsTab>("hero_banner");
   const [message, setMessage] = useState("");
   const [productMap, setProductMap] = useState<Record<number, AdminProduct>>({});
+  const [categories, setCategories] = useState<AdminCategory[]>([]);
 
   const [heroFormOpen, setHeroFormOpen] = useState(false);
   const [editingHero, setEditingHero] = useState<HeroSlideRecord | null>(null);
@@ -163,6 +166,12 @@ export function AdminCmsEditor() {
         setProductMap(map);
       })
       .catch(() => setProductMap({}));
+  }, []);
+
+  useEffect(() => {
+    void fetchCategories()
+      .then((res) => setCategories(res.data ?? []))
+      .catch(() => setCategories([]));
   }, []);
 
   const sortedHeroSlides = useMemo(
@@ -230,6 +239,54 @@ export function AdminCmsEditor() {
         items: section.items.map((i) => (i.id === itemId ? { ...i, enabled: !i.enabled } : i)),
       },
     });
+  }
+
+  const sortedTabs = useMemo(
+    () => [...cms.productTabs].sort((a, b) => a.sortOrder - b.sortOrder),
+    [cms.productTabs],
+  );
+
+  function persistTabs(tabs: ProductTabConfig[]) {
+    void persist({ ...cms, productTabs: tabs.map((tab, index) => ({ ...tab, sortOrder: index })) });
+  }
+
+  function addTab() {
+    const tab: ProductTabConfig = {
+      id: newId("tab"),
+      label: "แถบใหม่",
+      categorySlugs: [],
+      sortOrder: cms.productTabs.length,
+      enabled: true,
+    };
+    persistTabs([...sortedTabs, tab]);
+    showMessage("เพิ่มแถบแล้ว");
+  }
+
+  function updateTab(id: string, patch: Partial<ProductTabConfig>) {
+    persistTabs(sortedTabs.map((tab) => (tab.id === id ? { ...tab, ...patch } : tab)));
+  }
+
+  function deleteTab(id: string) {
+    if (!window.confirm("ลบแถบนี้ใช่หรือไม่?")) return;
+    persistTabs(sortedTabs.filter((tab) => tab.id !== id));
+    showMessage("ลบแถบแล้ว");
+  }
+
+  function moveTab(index: number, direction: -1 | 1) {
+    const target = index + direction;
+    if (target < 0 || target >= sortedTabs.length) return;
+    const next = [...sortedTabs];
+    [next[index], next[target]] = [next[target], next[index]];
+    persistTabs(next);
+  }
+
+  function toggleTabCategory(id: string, slug: string) {
+    const tab = sortedTabs.find((item) => item.id === id);
+    if (!tab) return;
+    const categorySlugs = tab.categorySlugs.includes(slug)
+      ? tab.categorySlugs.filter((value) => value !== slug)
+      : [...tab.categorySlugs, slug];
+    updateTab(id, { categorySlugs });
   }
 
   function renderHeroTable() {
@@ -456,12 +513,140 @@ export function AdminCmsEditor() {
     );
   }
 
+  function renderTabsSection() {
+    const section = cms.customerFavorite;
+
+    return (
+      <>
+        <div className="mb-6 grid gap-4 rounded-xl border border-slate-800 bg-slate-900/30 p-4 md:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-xs text-slate-500">หัวข้อ Section</label>
+            <input
+              value={section.title}
+              onChange={(e) => patchSection("customer_favorite", { title: e.target.value })}
+              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-slate-500">สถานะ Section</label>
+            <label className="flex h-[38px] items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm text-slate-200">
+              <input
+                type="checkbox"
+                checked={section.enabled}
+                onChange={(e) => patchSection("customer_favorite", { enabled: e.target.checked })}
+              />
+              {section.enabled ? "Active" : "Disabled"}
+            </label>
+          </div>
+          <div className="md:col-span-2">
+            <label className="mb-1 block text-xs text-slate-500">คำอธิบาย</label>
+            <textarea
+              value={section.subtitle}
+              onChange={(e) => patchSection("customer_favorite", { subtitle: e.target.value })}
+              rows={2}
+              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+        </div>
+
+        <p className="mb-3 text-xs text-slate-500">
+          แถบ &quot;All Collection&quot; แสดงอัตโนมัติเสมอ (สินค้าทั้งหมด). แต่ละแถบด้านล่างจะดึงสินค้าตามหมวดที่เลือก —
+          ถ้าไม่เลือกหมวดจะแสดงสินค้าทั้งหมด
+        </p>
+
+        {sortedTabs.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/30 px-3 py-10 text-center text-slate-500">
+            ยังไม่มีแถบ — กด &quot;เพิ่มแถบ&quot; เพื่อสร้าง เช่น รองเท้า, เสื้อผ้า, กระเป๋า
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {sortedTabs.map((tab, index) => (
+              <div key={tab.id} className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex-1">
+                    <label className="mb-1 block text-xs text-slate-500">ชื่อแถบ</label>
+                    <input
+                      value={tab.label}
+                      onChange={(e) => updateTab(tab.id, { label: e.target.value })}
+                      className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => moveTab(index, -1)}
+                      disabled={index === 0}
+                      className="rounded-md border border-slate-700 px-2 py-2 text-xs text-slate-400 disabled:opacity-30"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveTab(index, 1)}
+                      disabled={index === sortedTabs.length - 1}
+                      className="rounded-md border border-slate-700 px-2 py-2 text-xs text-slate-400 disabled:opacity-30"
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateTab(tab.id, { enabled: !tab.enabled })}
+                      className={`rounded-md border px-3 py-2 text-xs ${
+                        tab.enabled
+                          ? "border-emerald-500/40 text-emerald-300"
+                          : "border-slate-700 text-slate-500"
+                      }`}
+                    >
+                      {tab.enabled ? "Active" : "Disabled"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteTab(tab.id)}
+                      className="flex items-center gap-1 rounded-md bg-rose-600 px-2.5 py-2 text-xs text-white hover:bg-rose-500"
+                    >
+                      <TrashIcon />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-3">
+                  <p className="mb-2 text-xs text-slate-500">หมวดหมู่ในแถบนี้</p>
+                  {categories.length === 0 ? (
+                    <p className="text-xs text-slate-600">ยังไม่มีหมวดหมู่ในระบบ</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {categories.map((category) => {
+                        const active = tab.categorySlugs.includes(category.slug);
+                        return (
+                          <button
+                            key={category.id}
+                            type="button"
+                            onClick={() => toggleTabCategory(tab.id, category.slug)}
+                            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                              active
+                                ? "border-blue-500 bg-blue-600 text-white"
+                                : "border-slate-700 text-slate-300 hover:bg-slate-800"
+                            }`}
+                          >
+                            {category.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </>
+    );
+  }
+
   const excludeProductIds =
-    activeTab === "customer_favorite"
-      ? cms.customerFavorite.items.map((i) => i.productId)
-      : activeTab === "featured_products"
-        ? cms.featuredProducts.items.map((i) => i.productId)
-        : [];
+    activeTab === "featured_products"
+      ? cms.featuredProducts.items.map((i) => i.productId)
+      : [];
 
   return (
     <>
@@ -494,8 +679,10 @@ export function AdminCmsEditor() {
               if (activeTab === "hero_banner") {
                 setEditingHero(null);
                 setHeroFormOpen(true);
+              } else if (activeTab === "customer_favorite") {
+                addTab();
               } else {
-                setPickerSection(activeTab);
+                setPickerSection("featured_products");
                 setPickerOpen(true);
               }
             }}
@@ -512,7 +699,7 @@ export function AdminCmsEditor() {
         {message ? <p className="mb-3 text-sm text-emerald-400">{message}</p> : null}
 
         {!loading && activeTab === "hero_banner" ? renderHeroTable() : null}
-        {!loading && activeTab === "customer_favorite" ? renderProductSection("customer_favorite") : null}
+        {!loading && activeTab === "customer_favorite" ? renderTabsSection() : null}
         {!loading && activeTab === "featured_products" ? renderProductSection("featured_products") : null}
 
         <p className="mt-4 text-xs text-slate-600">

@@ -6,6 +6,7 @@ import type {
   HeroSlideRecord,
   HomepageCmsState,
   ProductCurationItem,
+  ProductTabConfig,
 } from "@/lib/cms/homepageCms";
 import { defaultHomepageCms } from "@/lib/cms/homepageCms";
 import { parseYouTubeId, youtubeThumbnailUrl } from "@/lib/cms/youtube";
@@ -50,6 +51,15 @@ function normalizeHomepageCms(data: HomepageCmsState | undefined): HomepageCmsSt
   return {
     heroSlides: data.heroSlides?.length ? data.heroSlides : defaultHomepageCms.heroSlides,
     customerFavorite: { ...defaultHomepageCms.customerFavorite, ...data.customerFavorite },
+    productTabs: Array.isArray(data.productTabs)
+      ? data.productTabs.map((tab, index) => ({
+          id: tab.id,
+          label: tab.label,
+          categorySlugs: Array.isArray(tab.categorySlugs) ? tab.categorySlugs : [],
+          sortOrder: typeof tab.sortOrder === "number" ? tab.sortOrder : index,
+          enabled: tab.enabled ?? true,
+        }))
+      : defaultHomepageCms.productTabs,
     featuredProducts: { ...defaultHomepageCms.featuredProducts, ...data.featuredProducts },
   };
 }
@@ -84,6 +94,26 @@ export function mapHeroSlidesForBanner(slides: HeroSlideRecord[]): StorefrontHer
         ctaUrl: slide.showCta ? slide.ctaUrl : undefined,
       };
     });
+}
+
+export type StorefrontProductTab = {
+  id: string;
+  label: string;
+  categorySlugs: string[];
+};
+
+export function mapProductTabsForStorefront(
+  tabs: ProductTabConfig[] | undefined,
+): StorefrontProductTab[] {
+  if (!tabs?.length) return [];
+  return [...tabs]
+    .filter((tab) => tab.enabled && tab.label.trim())
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((tab) => ({
+      id: tab.id,
+      label: tab.label,
+      categorySlugs: tab.categorySlugs ?? [],
+    }));
 }
 
 export function pickCuratedProducts(

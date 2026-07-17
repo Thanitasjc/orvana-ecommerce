@@ -41,6 +41,7 @@ class HomepageCmsService
                 $defaults['customerFavorite'],
                 $payload['customerFavorite'] ?? [],
             ),
+            'productTabs' => array_values($payload['productTabs'] ?? $defaults['productTabs']),
             'featuredProducts' => array_merge(
                 $defaults['featuredProducts'],
                 $payload['featuredProducts'] ?? [],
@@ -97,6 +98,7 @@ class HomepageCmsService
                 'enabled' => true,
                 'items' => [],
             ],
+            'productTabs' => [],
             'featuredProducts' => [
                 'title' => 'Featured Products',
                 'subtitle' => 'สินค้าแนะนำพิเศษบนหน้าแรก',

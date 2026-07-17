@@ -31,9 +31,18 @@ export type CmsSectionConfig = {
   items: ProductCurationItem[];
 };
 
+export type ProductTabConfig = {
+  id: string;
+  label: string;
+  categorySlugs: string[];
+  sortOrder: number;
+  enabled: boolean;
+};
+
 export type HomepageCmsState = {
   heroSlides: HeroSlideRecord[];
   customerFavorite: CmsSectionConfig;
+  productTabs: ProductTabConfig[];
   featuredProducts: CmsSectionConfig;
 };
 
@@ -93,6 +102,7 @@ export const defaultHomepageCms: HomepageCmsState = {
     "Customer Favorite Style Product",
     "สินค้ายอดนิยมที่ลูกค้าเลือกซื้อมากที่สุด",
   ),
+  productTabs: [],
   featuredProducts: defaultSection(
     "Featured Products",
     "สินค้าแนะนำพิเศษบนหน้าแรก",
@@ -108,6 +118,7 @@ export function loadHomepageCms(): HomepageCmsState {
     return {
       heroSlides: parsed.heroSlides?.length ? parsed.heroSlides : defaultHomepageCms.heroSlides,
       customerFavorite: parsed.customerFavorite ?? defaultHomepageCms.customerFavorite,
+      productTabs: parsed.productTabs ?? defaultHomepageCms.productTabs,
       featuredProducts: parsed.featuredProducts ?? defaultHomepageCms.featuredProducts,
     };
   } catch {

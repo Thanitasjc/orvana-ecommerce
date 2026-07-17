@@ -50,15 +50,6 @@ export type ProductGallerySlide = {
   main: string;
 };
 
-export type ProductTabKey = "shoes" | "clothing" | "bags";
-
-const CATEGORY_TAB_MAP: Record<string, ProductTabKey> = {
-  tops: "clothing",
-  outerwear: "clothing",
-  dresses: "clothing",
-  bottoms: "clothing",
-  accessories: "bags",
-};
 
 const CATEGORY_IMAGES = [
   "/assets/img/category/category-1.jpg",
@@ -240,11 +231,6 @@ export function productImage(product: ApiProduct, fallback: string) {
   return resolveProductImage(product.image, fallback);
 }
 
-function categoryToTab(categorySlug?: string): ProductTabKey {
-  if (!categorySlug) return "clothing";
-  return CATEGORY_TAB_MAP[categorySlug] ?? "clothing";
-}
-
 export async function getRelatedProducts(
   currentSlug: string,
   categorySlug?: string,
@@ -298,7 +284,7 @@ export function mapToProductTabsItems(products: ApiProduct[]) {
     price: formatPriceTHB(product.price),
     priceValue: product.price,
     rating: 5,
-    tab: categoryToTab(product.category?.slug),
+    categorySlug: product.category?.slug ?? null,
   }));
 }
 

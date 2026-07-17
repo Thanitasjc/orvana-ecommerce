@@ -7,8 +7,6 @@ import { parseDisplayPrice, useCompare } from "@/components/shop/compare/Compare
 import { useWishlist } from "@/components/shop/wishlist/WishlistProvider";
 import { QuickViewModal, type QuickViewProduct } from "@/components/shop/home/QuickViewModal";
 
-type ProductTab = "all" | "shoes" | "clothing" | "bags";
-
 type ProductItem = {
   id: string;
   title: string;
@@ -21,13 +19,22 @@ type ProductItem = {
   productId?: number;
   oldPrice?: string;
   rating?: number;
-  tab: Exclude<ProductTab, "all">;
+  categorySlug?: string | null;
+};
+
+type StorefrontTab = {
+  id: string;
+  label: string;
+  categorySlugs: string[];
 };
 
 type ProductTabsSectionProps = {
   products?: ProductItem[];
+  tabs?: StorefrontTab[];
   sectionTitle?: string;
 };
+
+const ALL_TAB_ID = "all";
 
 const defaultProducts: ProductItem[] = [
   {
@@ -40,7 +47,7 @@ const defaultProducts: ProductItem[] = [
     price: "$340.00",
     oldPrice: "$475.00",
     rating: 5,
-    tab: "clothing",
+    categorySlug: "clothing",
   },
   {
     id: "p-2",
@@ -52,7 +59,7 @@ const defaultProducts: ProductItem[] = [
     price: "$102.00",
     oldPrice: "$119.00",
     rating: 5,
-    tab: "bags",
+    categorySlug: "bags",
   },
   {
     id: "p-3",
@@ -63,7 +70,7 @@ const defaultProducts: ProductItem[] = [
     href: "/products/example-3",
     price: "$45.00",
     rating: 5,
-    tab: "shoes",
+    categorySlug: "shoes",
   },
   {
     id: "p-4",
@@ -75,7 +82,7 @@ const defaultProducts: ProductItem[] = [
     price: "$245.00",
     oldPrice: "$120.00",
     rating: 5,
-    tab: "bags",
+    categorySlug: "bags",
   },
   {
     id: "p-5",
@@ -86,7 +93,7 @@ const defaultProducts: ProductItem[] = [
     href: "/products/example-5",
     price: "$40.00",
     rating: 5,
-    tab: "bags",
+    categorySlug: "bags",
   },
   {
     id: "p-6",
@@ -98,7 +105,7 @@ const defaultProducts: ProductItem[] = [
     price: "$75.00",
     oldPrice: "$79.00",
     rating: 5,
-    tab: "shoes",
+    categorySlug: "shoes",
   },
   {
     id: "p-7",
@@ -109,7 +116,7 @@ const defaultProducts: ProductItem[] = [
     href: "/products/example-7",
     price: "$38.00",
     rating: 5,
-    tab: "clothing",
+    categorySlug: "clothing",
   },
   {
     id: "p-8",
@@ -120,16 +127,9 @@ const defaultProducts: ProductItem[] = [
     href: "/products/example-8",
     price: "$105.00",
     rating: 5,
-    tab: "bags",
+    categorySlug: "bags",
   },
 ];
-
-const tabLabels: Record<ProductTab, string> = {
-  all: "All Collection",
-  shoes: "Shoes",
-  clothing: "Clothing",
-  bags: "Bags",
-};
 
 const actionBtnStyle = {
   display: "flex",
@@ -143,9 +143,10 @@ const actionIconStyle = {
 
 export function ProductTabsSection({
   products = defaultProducts,
+  tabs = [],
   sectionTitle = "Customer Favorite Style Product",
 }: ProductTabsSectionProps) {
-  const [activeTab, setActiveTab] = useState<ProductTab>("all");
+  const [activeTab, setActiveTab] = useState<string>(ALL_TAB_ID);
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
   const { addItem } = useCart();
   const { addItem: addCompareItem } = useCompare();
@@ -159,20 +160,32 @@ export function ProductTabsSection({
       }, 7),
     );
 
-  const counts = useMemo(
-    () => ({
-      all: products.length,
-      shoes: products.filter((product) => product.tab === "shoes").length,
-      clothing: products.filter((product) => product.tab === "clothing").length,
-      bags: products.filter((product) => product.tab === "bags").length,
-    }),
+  const renderTabs = useMemo(
+    () => [{ id: ALL_TAB_ID, label: "All Collection", categorySlugs: [] as string[] }, ...tabs],
+    [tabs],
+  );
+
+  const productsForTab = useMemo(
+    () => (tab: StorefrontTab) => {
+      if (tab.id === ALL_TAB_ID || tab.categorySlugs.length === 0) return products;
+      const allowed = new Set(tab.categorySlugs);
+      return products.filter((product) => product.categorySlug && allowed.has(product.categorySlug));
+    },
     [products],
   );
 
+  const counts = useMemo(() => {
+    const result: Record<string, number> = {};
+    for (const tab of renderTabs) {
+      result[tab.id] = productsForTab(tab).length;
+    }
+    return result;
+  }, [productsForTab, renderTabs]);
+
   const visibleProducts = useMemo(() => {
-    if (activeTab === "all") return products;
-    return products.filter((product) => product.tab === activeTab);
-  }, [activeTab, products]);
+    const active = renderTabs.find((tab) => tab.id === activeTab) ?? renderTabs[0];
+    return productsForTab(active);
+  }, [activeTab, productsForTab, renderTabs]);
 
   return (
     <section className="tp-product-area pb-90">
@@ -209,17 +222,19 @@ export function ProductTabsSection({
             <div className="tp-product-tab-2 tp-tab mb-50 text-center">
               <nav>
                 <div className="nav nav-tabs justify-content-center" role="tablist">
-                  {(Object.keys(tabLabels) as ProductTab[]).map((tab) => (
+                  {renderTabs.map((tab) => (
                     <button
-                      key={tab}
-                      className={`nav-link ${activeTab === tab ? "active" : ""}`}
+                      key={tab.id}
+                      className={`nav-link ${activeTab === tab.id ? "active" : ""}`}
                       type="button"
                       role="tab"
-                      aria-selected={activeTab === tab}
-                      onClick={() => setActiveTab(tab)}
+                      aria-selected={activeTab === tab.id}
+                      onClick={() => setActiveTab(tab.id)}
                     >
-                      {tabLabels[tab]}
-                      <span className="tp-product-tab-tooltip">{String(counts[tab]).padStart(2, "0")}</span>
+                      {tab.label}
+                      <span className="tp-product-tab-tooltip">
+                        {String(counts[tab.id] ?? 0).padStart(2, "0")}
+                      </span>
                     </button>
                   ))}
                 </div>

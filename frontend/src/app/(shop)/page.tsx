@@ -11,6 +11,7 @@ import { fetchBlogs } from "@/lib/api/blogs";
 import {
   fetchHomepageCms,
   mapHeroSlidesForBanner,
+  mapProductTabsForStorefront,
   pickCuratedProducts,
 } from "@/lib/api/cms";
 import {
@@ -34,16 +35,12 @@ export default async function HomePage() {
   ]);
 
   const heroSlides = mapHeroSlidesForBanner(cms.heroSlides);
-  const curatedFavorite = pickCuratedProducts(allProducts, cms.customerFavorite);
   const curatedFeatured = pickCuratedProducts(allProducts, cms.featuredProducts);
 
   const categoryItems = allProducts.length > 0 ? mapToCategorySliderItems(allProducts) : undefined;
   const tabProducts =
-    curatedFavorite && curatedFavorite.length > 0
-      ? mapToProductTabsItems(curatedFavorite)
-      : allProducts.length > 0
-        ? mapToProductTabsItems(allProducts)
-        : undefined;
+    allProducts.length > 0 ? mapToProductTabsItems(allProducts) : undefined;
+  const storefrontTabs = mapProductTabsForStorefront(cms.productTabs);
   const featuredSliderProducts =
     curatedFeatured && curatedFeatured.length > 0 ? curatedFeatured : featuredProducts;
   const featuredSliderItems =
@@ -60,6 +57,7 @@ export default async function HomePage() {
       <CategorySlider items={categoryItems} />
       <ProductTabsSection
         products={tabProducts}
+        tabs={storefrontTabs}
         sectionTitle={cms.customerFavorite.enabled ? cms.customerFavorite.title : undefined}
       />
       <FeaturedProductSlider
