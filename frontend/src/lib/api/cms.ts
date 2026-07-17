@@ -15,7 +15,9 @@ export type StorefrontHeroSlide = {
   mediaType: "image" | "youtube";
   image: string;
   youtubeId?: string;
+  badge?: string;
   title?: string;
+  titleHighlight?: string;
   subtitle?: string;
   ctaLabel?: string;
   ctaUrl?: string;
@@ -75,7 +77,6 @@ export function mapHeroSlidesForBanner(slides: HeroSlideRecord[]): StorefrontHer
     })
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((slide) => {
-      const title = [slide.title, slide.titleHighlight].filter(Boolean).join(" ").trim();
       const youtubeId =
         slide.mediaType === "youtube" ? parseYouTubeId(slide.youtubeId) ?? undefined : undefined;
       const image = slide.image
@@ -88,7 +89,9 @@ export function mapHeroSlidesForBanner(slides: HeroSlideRecord[]): StorefrontHer
         mediaType: slide.mediaType,
         image,
         youtubeId,
-        title: title || undefined,
+        badge: slide.badge || undefined,
+        title: slide.title || undefined,
+        titleHighlight: slide.titleHighlight || undefined,
         subtitle: slide.subtitle || undefined,
         ctaLabel: slide.showCta ? slide.ctaLabel : undefined,
         ctaUrl: slide.showCta ? slide.ctaUrl : undefined,

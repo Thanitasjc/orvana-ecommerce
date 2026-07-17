@@ -10,7 +10,6 @@ export function ShopStyles() {
       <link rel="stylesheet" href="/assets/css/flaticon_shofy.css" />
       <link rel="stylesheet" href="/assets/css/spacing.css" />
       <link rel="stylesheet" href="/assets/css/main.css" />
-      <link rel="stylesheet" href="/assets/css/hero-banner.css" />
     </>
   );
 }
