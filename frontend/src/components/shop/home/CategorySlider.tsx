@@ -251,8 +251,9 @@ export function CategorySlider({ items = defaultItems }: CategorySliderProps) {
                   className="tp-swiper-scrollbar-drag"
                   style={{
                     width: `${scrollbarWidth}%`,
-                    transform: `translate3d(${scrollbarPosition}%, 0, 0)`,
-                    transition: isDragging ? "none" : "transform 0.5s ease",
+                    position: "relative",
+                    left: `${scrollbarPosition}%`,
+                    transition: isDragging ? "none" : "left 0.5s ease",
                     cursor: maxStartIndex > 0 ? (isDragging ? "grabbing" : "grab") : "default",
                   }}
                 />
