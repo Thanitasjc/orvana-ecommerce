@@ -70,9 +70,12 @@ return [
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', true),
-            'visibility' => 'public',
-            'throw' => false,
-            'report' => false,
+            // NOTE: Supabase Storage's S3 API does not support object ACLs.
+            // Setting a visibility makes Flysystem send an "x-amz-acl" header,
+            // which Supabase rejects and causes uploads to fail silently.
+            // Public access is controlled by making the bucket public instead.
+            'throw' => true,
+            'report' => true,
         ],
 
     ],
