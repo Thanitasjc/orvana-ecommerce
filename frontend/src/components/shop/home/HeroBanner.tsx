@@ -117,7 +117,7 @@ export function HeroBanner({ slides = defaultSlides }: HeroBannerProps) {
   if (count === 0) return null;
 
   return (
-    <section className="group relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2 overflow-hidden bg-slate-900">
+    <section className="group relative w-full overflow-hidden bg-slate-900">
       {validSlides.map((slide, index) => {
         const isActive = index === activeIndex;
         const isYoutube = slide.mediaType === "youtube" && slide.youtubeId;
