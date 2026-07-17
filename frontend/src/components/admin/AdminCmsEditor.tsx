@@ -100,6 +100,7 @@ export function AdminCmsEditor() {
   const [cms, setCms] = useState<HomepageCmsState>(defaultHomepageCms);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<CmsTab>("hero_banner");
   const [message, setMessage] = useState("");
@@ -116,7 +117,12 @@ export function AdminCmsEditor() {
 
   const activeMeta = TABS.find((t) => t.key === activeTab)!;
 
-  const persist = useCallback(async (next: HomepageCmsState) => {
+  const mutate = useCallback((updater: (prev: HomepageCmsState) => HomepageCmsState) => {
+    setCms((prev) => updater(prev));
+    setDirty(true);
+  }, []);
+
+  const handleSave = useCallback(async () => {
     const token = getCookie(STAFF_TOKEN_KEY);
     if (!token) {
       setLoadError("กรุณาเข้าสู่ระบบ admin");
@@ -127,14 +133,17 @@ export function AdminCmsEditor() {
     setLoadError(null);
 
     try {
-      const saved = await saveAdminHomepageCms(next, token);
+      const saved = await saveAdminHomepageCms(cms, token);
       setCms(saved);
+      setDirty(false);
+      setMessage("บันทึกแล้ว");
+      window.setTimeout(() => setMessage(""), 2500);
     } catch {
       setLoadError("บันทึก CMS ไม่สำเร็จ");
     } finally {
       setSaving(false);
     }
-  }, []);
+  }, [cms]);
 
   const showMessage = useCallback((text: string) => {
     setMessage(text);
@@ -174,70 +183,88 @@ export function AdminCmsEditor() {
       .catch(() => setCategories([]));
   }, []);
 
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty]);
+
   const sortedHeroSlides = useMemo(
     () => [...cms.heroSlides].sort((a, b) => a.sortOrder - b.sortOrder),
     [cms.heroSlides],
   );
 
   function patchSection(key: ProductSectionKey, patch: Partial<CmsSectionConfig>) {
-    void persist(patchSectionInState(cms, key, patch));
+    mutate((prev) => patchSectionInState(prev, key, patch));
   }
 
-  async function saveHeroSlide(slide: HeroSlideRecord) {
+  function saveHeroSlide(slide: HeroSlideRecord) {
     const isNew = !slide.id;
     const record = { ...slide, id: slide.id || newId("hero") };
-    const heroSlides = isNew
-      ? [...cms.heroSlides, record]
-      : cms.heroSlides.map((s) => (s.id === record.id ? record : s));
-    await persist({ ...cms, heroSlides });
+    mutate((prev) => ({
+      ...prev,
+      heroSlides: isNew
+        ? [...prev.heroSlides, record]
+        : prev.heroSlides.map((s) => (s.id === record.id ? record : s)),
+    }));
     setHeroFormOpen(false);
     setEditingHero(null);
-    showMessage(isNew ? "เพิ่มสไลด์แล้ว" : "บันทึกสไลด์แล้ว");
+    showMessage(isNew ? "เพิ่มสไลด์แล้ว (กด \"บันทึก\" เพื่อยืนยัน)" : "แก้ไขสไลด์แล้ว (กด \"บันทึก\" เพื่อยืนยัน)");
   }
 
-  async function deleteHeroSlide(id: string) {
+  function deleteHeroSlide(id: string) {
     if (!window.confirm("ลบสไลด์นี้ใช่หรือไม่?")) return;
-    await persist({ ...cms, heroSlides: cms.heroSlides.filter((s) => s.id !== id) });
-    showMessage("ลบสไลด์แล้ว");
+    mutate((prev) => ({ ...prev, heroSlides: prev.heroSlides.filter((s) => s.id !== id) }));
+    showMessage("ลบสไลด์แล้ว (กด \"บันทึก\" เพื่อยืนยัน)");
   }
 
-  async function addProductToSection(
+  function addProductToSection(
     sectionKey: "customer_favorite" | "featured_products",
     product: AdminProduct,
   ) {
     setProductMap((prev) => ({ ...prev, [product.id]: product }));
-    const section = getSectionFromState(cms, sectionKey);
-    const item: ProductCurationItem = {
-      id: newId("item"),
-      productId: product.id,
-      sortOrder: section.items.length,
-      enabled: true,
-    };
-    await persist({
-      ...cms,
-      [SECTION_STATE_KEY[sectionKey]]: { ...section, items: [...section.items, item] },
+    mutate((prev) => {
+      const section = getSectionFromState(prev, sectionKey);
+      const item: ProductCurationItem = {
+        id: newId("item"),
+        productId: product.id,
+        sortOrder: section.items.length,
+        enabled: true,
+      };
+      return {
+        ...prev,
+        [SECTION_STATE_KEY[sectionKey]]: { ...section, items: [...section.items, item] },
+      };
     });
-    showMessage(`เพิ่ม ${product.name} แล้ว`);
+    showMessage(`เพิ่ม ${product.name} แล้ว (กด "บันทึก" เพื่อยืนยัน)`);
   }
 
-  async function deleteProductItem(sectionKey: "customer_favorite" | "featured_products", itemId: string) {
+  function deleteProductItem(sectionKey: "customer_favorite" | "featured_products", itemId: string) {
     if (!window.confirm("ลบรายการนี้ใช่หรือไม่?")) return;
-    const section = getSectionFromState(cms, sectionKey);
-    await persist({
-      ...cms,
-      [SECTION_STATE_KEY[sectionKey]]: { ...section, items: section.items.filter((i) => i.id !== itemId) },
+    mutate((prev) => {
+      const section = getSectionFromState(prev, sectionKey);
+      return {
+        ...prev,
+        [SECTION_STATE_KEY[sectionKey]]: { ...section, items: section.items.filter((i) => i.id !== itemId) },
+      };
     });
-    showMessage("ลบรายการแล้ว");
+    showMessage("ลบรายการแล้ว (กด \"บันทึก\" เพื่อยืนยัน)");
   }
 
   function toggleProductItem(sectionKey: "customer_favorite" | "featured_products", itemId: string) {
-    const section = getSectionFromState(cms, sectionKey);
-    void persist({
-      ...cms,
-      [SECTION_STATE_KEY[sectionKey]]: {
-        ...section,
-        items: section.items.map((i) => (i.id === itemId ? { ...i, enabled: !i.enabled } : i)),
-      },
+    mutate((prev) => {
+      const section = getSectionFromState(prev, sectionKey);
+      return {
+        ...prev,
+        [SECTION_STATE_KEY[sectionKey]]: {
+          ...section,
+          items: section.items.map((i) => (i.id === itemId ? { ...i, enabled: !i.enabled } : i)),
+        },
+      };
     });
   }
 
@@ -247,7 +274,7 @@ export function AdminCmsEditor() {
   );
 
   function persistTabs(tabs: ProductTabConfig[]) {
-    void persist({ ...cms, productTabs: tabs.map((tab, index) => ({ ...tab, sortOrder: index })) });
+    mutate((prev) => ({ ...prev, productTabs: tabs.map((tab, index) => ({ ...tab, sortOrder: index })) }));
   }
 
   function addTab() {
@@ -259,7 +286,7 @@ export function AdminCmsEditor() {
       enabled: true,
     };
     persistTabs([...sortedTabs, tab]);
-    showMessage("เพิ่มแถบแล้ว");
+    showMessage("เพิ่มแถบแล้ว (กด \"บันทึก\" เพื่อยืนยัน)");
   }
 
   function updateTab(id: string, patch: Partial<ProductTabConfig>) {
@@ -269,7 +296,7 @@ export function AdminCmsEditor() {
   function deleteTab(id: string) {
     if (!window.confirm("ลบแถบนี้ใช่หรือไม่?")) return;
     persistTabs(sortedTabs.filter((tab) => tab.id !== id));
-    showMessage("ลบแถบแล้ว");
+    showMessage("ลบแถบแล้ว (กด \"บันทึก\" เพื่อยืนยัน)");
   }
 
   function moveTab(index: number, direction: -1 | 1) {
@@ -673,29 +700,41 @@ export function AdminCmsEditor() {
       <AdminPanel
         title={activeMeta.title}
         action={
-          <button
-            type="button"
-            onClick={() => {
-              if (activeTab === "hero_banner") {
-                setEditingHero(null);
-                setHeroFormOpen(true);
-              } else if (activeTab === "customer_favorite") {
-                addTab();
-              } else {
-                setPickerSection("featured_products");
-                setPickerOpen(true);
-              }
-            }}
-            className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500"
-          >
-            {activeMeta.addLabel}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (activeTab === "hero_banner") {
+                  setEditingHero(null);
+                  setHeroFormOpen(true);
+                } else if (activeTab === "customer_favorite") {
+                  addTab();
+                } else {
+                  setPickerSection("featured_products");
+                  setPickerOpen(true);
+                }
+              }}
+              className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800"
+            >
+              {activeMeta.addLabel}
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={!dirty || saving}
+              className="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {saving ? "กำลังบันทึก..." : "บันทึก"}
+            </button>
+          </div>
         }
       >
         <p className="mb-4 text-sm text-slate-400">{activeMeta.description}</p>
         {loading ? <p className="mb-3 text-sm text-slate-400">กำลังโหลด...</p> : null}
         {loadError ? <p className="mb-3 text-sm text-rose-400">{loadError}</p> : null}
-        {saving ? <p className="mb-3 text-sm text-slate-400">กำลังบันทึก...</p> : null}
+        {dirty && !saving ? (
+          <p className="mb-3 text-sm text-amber-400">มีการแก้ไขที่ยังไม่บันทึก — กดปุ่ม &quot;บันทึก&quot; เพื่อบันทึกการเปลี่ยนแปลง</p>
+        ) : null}
         {message ? <p className="mb-3 text-sm text-emerald-400">{message}</p> : null}
 
         {!loading && activeTab === "hero_banner" ? renderHeroTable() : null}
