@@ -1,7 +1,7 @@
  "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useCart } from "@/components/shop/cart/CartProvider";
 import { parseDisplayPrice, useCompare } from "@/components/shop/compare/CompareProvider";
 import { useWishlist } from "@/components/shop/wishlist/WishlistProvider";
@@ -85,7 +85,11 @@ export function TrendingArrivalsSection({
   const { addItem } = useCart();
   const { addItem: addCompareItem } = useCompare();
   const { addItem: addWishlistItem } = useWishlist();
-  const pageCount = Math.max(1, items.length);
+  const slidesPerView = 2;
+  const maxStartIndex = Math.max(0, items.length - slidesPerView);
+  const pageCount = maxStartIndex + 1;
+  const trackWidth = Math.max(100, (items.length / slidesPerView) * 100);
+  const translatePercent = items.length > 0 ? (page / items.length) * 100 : 0;
   const parsePrice = (value: string) => parseDisplayPrice(value);
   const makeCartId = (value: string) =>
     Math.abs(
@@ -93,12 +97,10 @@ export function TrendingArrivalsSection({
         return (acc * 31 + ch.charCodeAt(0)) % 2147483647;
       }, 7),
     );
-  const visibleItems = useMemo(() => {
-    if (items.length <= 2) return items;
-    const first = items[page % items.length];
-    const second = items[(page + 1) % items.length];
-    return [first, second];
-  }, [items, page]);
+
+  useEffect(() => {
+    if (page > maxStartIndex) setPage(maxStartIndex);
+  }, [page, maxStartIndex]);
 
   return (
     <section className="tp-trending-area pt-140 pb-150">
@@ -130,17 +132,22 @@ export function TrendingArrivalsSection({
               </div>
 
               <div className="tp-trending-slider">
-                <div className="tp-trending-slider-active swiper-container">
+                <div className="tp-trending-slider-active swiper-container" style={{ overflow: "hidden" }}>
                   <div
                     className="swiper-wrapper"
                     style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                      columnGap: "24px",
+                      display: "flex",
+                      width: `${trackWidth}%`,
+                      transform: `translate3d(-${translatePercent}%, 0, 0)`,
+                      transition: "transform 0.5s ease",
                     }}
                   >
-                    {visibleItems.map((item) => (
-                      <div className="tp-trending-item swiper-slide" key={item.id}>
+                    {items.map((item) => (
+                      <div
+                        className="tp-trending-item swiper-slide"
+                        key={item.id}
+                        style={{ flex: `0 0 ${100 / Math.max(1, items.length)}%`, padding: "0 12px" }}
+                      >
                         <div className="tp-product-item-2">
                           <div className="tp-product-thumb-2 p-relative z-index-1 fix w-img">
                             <Link href={item.href}>
