@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type FeaturedItem = {
   id: string;
@@ -66,13 +66,34 @@ export function FeaturedProductSlider({
 }: FeaturedProductSliderProps) {
   const [index, setIndex] = useState(0);
   const safeItems = useMemo(() => items.filter((item) => item.image), [items]);
-  const orderedItems = useMemo(
-    () => [...safeItems.slice(index), ...safeItems.slice(0, index)],
-    [index, safeItems],
-  );
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
 
-  const prev = () => setIndex((prevIndex) => (prevIndex - 1 + safeItems.length) % safeItems.length);
-  const next = () => setIndex((prevIndex) => (prevIndex + 1) % safeItems.length);
+  const SLIDE_WIDTH = 612;
+  const GAP = 8;
+  const step = SLIDE_WIDTH + GAP;
+  const trackWidth =
+    safeItems.length * SLIDE_WIDTH + Math.max(0, safeItems.length - 1) * GAP;
+  const maxTranslate = Math.max(0, trackWidth - containerWidth);
+  const maxIndex = Math.ceil(maxTranslate / step);
+  const translate = Math.min(index * step, maxTranslate);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const update = () => setContainerWidth(el.clientWidth);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (index > maxIndex) setIndex(maxIndex);
+  }, [index, maxIndex]);
+
+  const prev = () => setIndex((prevIndex) => Math.max(0, prevIndex - 1));
+  const next = () => setIndex((prevIndex) => Math.min(maxIndex, prevIndex + 1));
 
   if (safeItems.length === 0) return null;
 
@@ -110,6 +131,7 @@ export function FeaturedProductSlider({
           <div className="col-xl-12">
             <div className="tp-featured-slider">
               <div
+                ref={containerRef}
                 className="tp-featured-slider-active swiper-container"
                 style={{
                   overflow: "hidden",
@@ -119,11 +141,13 @@ export function FeaturedProductSlider({
                   className="swiper-wrapper"
                   style={{
                     display: "flex",
-                    gap: "8px",
+                    gap: `${GAP}px`,
                     alignItems: "stretch",
+                    transform: `translate3d(-${translate}px, 0, 0)`,
+                    transition: "transform 0.5s ease",
                   }}
                 >
-                  {orderedItems.map((item) => (
+                  {safeItems.map((item) => (
                     <div
                       key={item.id}
                       className="tp-featured-item swiper-slide white-bg p-relative z-index-1"
