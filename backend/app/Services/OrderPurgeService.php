@@ -60,7 +60,7 @@ class OrderPurgeService
             }
 
             if ($order->payment_slip_path) {
-                Storage::disk('public')->delete($order->payment_slip_path);
+                Storage::disk(config('filesystems.uploads'))->delete($order->payment_slip_path);
             }
 
             LoyaltyPointTransaction::query()->where('order_id', $order->id)->delete();

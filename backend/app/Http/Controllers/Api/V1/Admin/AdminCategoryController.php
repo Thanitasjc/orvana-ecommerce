@@ -80,11 +80,13 @@ class AdminCategoryController extends Controller
             'image' => ['required', 'image', 'mimes:jpeg,png,jpg,webp,gif', 'max:4096'],
         ]);
 
-        $path = $validated['image']->store('categories', 'public');
+        $disk = config('filesystems.uploads');
+        $path = $validated['image']->store('categories', $disk);
+        $url = Storage::disk($disk)->url($path);
 
         return response()->json([
-            'path' => '/storage/'.$path,
-            'url' => Storage::disk('public')->url($path),
+            'path' => $url,
+            'url' => $url,
         ]);
     }
 

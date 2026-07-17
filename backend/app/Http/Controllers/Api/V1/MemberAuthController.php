@@ -80,11 +80,13 @@ class MemberAuthController extends Controller
         /** @var Customer $customer */
         $customer = $request->user();
 
+        $disk = config('filesystems.uploads');
+
         if ($customer->avatar) {
-            Storage::disk('public')->delete($customer->avatar);
+            Storage::disk($disk)->delete($customer->avatar);
         }
 
-        $path = $validated['avatar']->store('avatars', 'public');
+        $path = $validated['avatar']->store('avatars', $disk);
         $customer->update(['avatar' => $path]);
 
         return response()->json([
@@ -100,7 +102,7 @@ class MemberAuthController extends Controller
             'email' => $customer->email,
             'phone' => $customer->phone,
             'avatar' => $customer->avatar
-                ? Storage::disk('public')->url($customer->avatar)
+                ? Storage::disk(config('filesystems.uploads'))->url($customer->avatar)
                 : null,
             'points' => $customer->points,
             'tier' => $customer->tier,

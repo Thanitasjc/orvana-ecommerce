@@ -105,7 +105,7 @@ class OrderPaymentService
             'requires_slip' => $paymentMethod?->requiresSlip() ?? false,
             'is_gateway' => $paymentMethod?->isGateway() ?? false,
             'payment_slip_url' => $order->payment_slip_path
-                ? Storage::disk('public')->url($order->payment_slip_path)
+                ? Storage::disk(config('filesystems.uploads'))->url($order->payment_slip_path)
                 : null,
             'omise_charge_id' => $order->omise_charge_id,
             'payment_metadata' => $order->payment_metadata,

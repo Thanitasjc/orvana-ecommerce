@@ -56,7 +56,7 @@ class OrderPaymentController extends Controller
             ]);
         }
 
-        $path = $request->file('slip')->store("payment-slips/{$order->id}", 'public');
+        $path = $request->file('slip')->store("payment-slips/{$order->id}", config('filesystems.uploads'));
 
         $order->update([
             'payment_slip_path' => $path,

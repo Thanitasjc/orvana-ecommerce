@@ -62,7 +62,7 @@ class Order extends Model
             return null;
         }
 
-        return \Illuminate\Support\Facades\Storage::disk('public')->url($this->payment_slip_path);
+        return \Illuminate\Support\Facades\Storage::disk(config('filesystems.uploads'))->url($this->payment_slip_path);
     }
 
     public function customer(): BelongsTo
