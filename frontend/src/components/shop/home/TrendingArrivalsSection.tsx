@@ -1,8 +1,8 @@
  "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { useDragSlider } from "@/lib/hooks/useDragSlider";
+import { useState } from "react";
+import { LoopCarousel } from "@/components/shop/home/LoopCarousel";
 import { useCart } from "@/components/shop/cart/CartProvider";
 import { parseDisplayPrice, useCompare } from "@/components/shop/compare/CompareProvider";
 import { useWishlist } from "@/components/shop/wishlist/WishlistProvider";
@@ -81,16 +81,10 @@ export function TrendingArrivalsSection({
   items = defaultItems,
   banner = defaultBanner,
 }: TrendingArrivalsSectionProps) {
-  const [page, setPage] = useState(0);
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
   const { addItem } = useCart();
   const { addItem: addCompareItem } = useCompare();
   const { addItem: addWishlistItem } = useWishlist();
-  const slidesPerView = 2;
-  const maxStartIndex = Math.max(0, items.length - slidesPerView);
-  const pageCount = maxStartIndex + 1;
-  const trackWidth = Math.max(100, (items.length / slidesPerView) * 100);
-  const translatePercent = items.length > 0 ? (page / items.length) * 100 : 0;
   const parsePrice = (value: string) => parseDisplayPrice(value);
   const makeCartId = (value: string) =>
     Math.abs(
@@ -99,19 +93,139 @@ export function TrendingArrivalsSection({
       }, 7),
     );
 
-  const viewportRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (page > maxStartIndex) setPage(maxStartIndex);
-  }, [page, maxStartIndex]);
-
-  const { dragOffset, isDragging, dragProps } = useDragSlider({
-    viewportRef,
-    slidesPerView,
-    index: page,
-    maxIndex: maxStartIndex,
-    setIndex: setPage,
-  });
+  const slides = items.map((item) => (
+    <div key={item.id} className="tp-trending-item">
+      <div className="tp-product-item-2">
+        <div className="tp-product-thumb-2 p-relative z-index-1 fix w-img">
+          <Link href={item.href}>
+            <img src={item.image} alt={item.title} />
+          </Link>
+          <div className="tp-product-action-2 tp-product-action-blackStyle">
+            <div className="tp-product-action-item-2 d-flex flex-column">
+              <button
+                type="button"
+                className="tp-product-action-btn-2 tp-product-add-cart-btn"
+                aria-label="Add to cart"
+                style={actionBtnStyle}
+                onClick={() =>
+                  addItem({
+                    id: item.productId ?? makeCartId(`trending-${item.id}`),
+                    title: item.title,
+                    href: item.href,
+                    image: item.image,
+                    price: item.priceValue ?? parsePrice(item.price),
+                    quantity: 1,
+                  })
+                }
+              >
+                <svg style={actionIconStyle} width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path fillRule="evenodd" clipRule="evenodd" d="M3.34706 4.53799L3.85961 10.6239C3.89701 11.0923 4.28036 11.4436 4.74871 11.4436H4.75212H14.0265H14.0282C14.4711 11.4436 14.8493 11.1144 14.9122 10.6774L15.7197 5.11162C15.7384 4.97924 15.7053 4.84687 15.6245 4.73995C15.5446 4.63218 15.4273 4.5626 15.2947 4.54393C15.1171 4.55072 7.74498 4.54054 3.34706 4.53799Z" fill="currentColor" />
+                  <path fillRule="evenodd" clipRule="evenodd" d="M12.6629 7.67446H10.3067C9.95394 7.67446 9.66919 7.38934 9.66919 7.03804C9.66919 6.68673 9.95394 6.40161 10.3067 6.40161H12.6629C13.0148 6.40161 13.3004 6.68673 13.3004 7.03804C13.3004 7.38934 13.0148 7.67446 12.6629 7.67446Z" fill="currentColor" />
+                </svg>
+                <span className="tp-product-tooltip tp-product-tooltip-right">Add to Cart</span>
+              </button>
+              <button
+                type="button"
+                className="tp-product-action-btn-2 tp-product-quick-view-btn"
+                aria-label="Quick view"
+                style={actionBtnStyle}
+                onClick={() =>
+                  setQuickViewProduct({
+                    id: item.id,
+                    title: item.title,
+                    href: item.href,
+                    image: item.image,
+                    price: item.price,
+                    oldPrice: item.oldPrice,
+                    tags: item.tags,
+                  })
+                }
+              >
+                <svg style={actionIconStyle} width="18" height="15" viewBox="0 0 18 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path fillRule="evenodd" clipRule="evenodd" d="M8.99948 5.06828C7.80247 5.06828 6.82956 6.04044 6.82956 7.23542C6.82956 8.42951 7.80247 9.40077 8.99948 9.40077C10.1965 9.40077 11.1703 8.42951 11.1703 7.23542C11.1703 6.04044 10.1965 5.06828 8.99948 5.06828Z" fill="currentColor" />
+                  <path fillRule="evenodd" clipRule="evenodd" d="M1.41273 7.2346C3.08674 10.9265 5.90646 13.1215 8.99978 13.1224C12.0931 13.1215 14.9128 10.9265 16.5868 7.2346C14.9128 3.54363 12.0931 1.34863 8.99978 1.34773C5.90736 1.34863 3.08674 3.54363 1.41273 7.2346Z" fill="currentColor" />
+                </svg>
+                <span className="tp-product-tooltip tp-product-tooltip-right">Quick View</span>
+              </button>
+              <button
+                type="button"
+                className="tp-product-action-btn-2 tp-product-add-to-wishlist-btn"
+                aria-label="Add to wishlist"
+                style={actionBtnStyle}
+                onClick={() =>
+                  addWishlistItem({
+                    id: item.productId ?? makeCartId(`trend-${item.id}`),
+                    title: item.title,
+                    href: item.href,
+                    image: item.image,
+                    price: item.priceValue ?? parsePrice(item.price),
+                  })
+                }
+              >
+                <svg style={actionIconStyle} width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path fillRule="evenodd" clipRule="evenodd" d="M1.60355 7.98635C2.83622 11.8048 7.7062 14.8923 9.0004 15.6565C10.299 14.8844 15.2042 11.7628 16.3973 7.98985C17.1806 5.55102 16.4535 2.46177 13.5644 1.53473C12.1647 1.08741 10.532 1.35966 9.40484 2.22804C9.16921 2.40837 8.84214 2.41187 8.60476 2.23329C7.41078 1.33952 5.85105 1.07778 4.42936 1.53473C1.54465 2.4609 0.820172 5.55014 1.60355 7.98635Z" fill="currentColor" />
+                </svg>
+                <span className="tp-product-tooltip tp-product-tooltip-right">
+                  Add To Wishlist
+                </span>
+              </button>
+              <button
+                type="button"
+                className="tp-product-action-btn-2 tp-product-add-to-compare-btn"
+                aria-label="Add to compare"
+                style={actionBtnStyle}
+                onClick={() =>
+                  addCompareItem({
+                    id: item.productId ?? makeCartId(`trend-${item.id}`),
+                    title: item.title,
+                    href: item.href,
+                    image: item.image,
+                    price: item.priceValue ?? parsePrice(item.price),
+                    oldPrice: item.oldPrice ? parsePrice(item.oldPrice) : undefined,
+                  })
+                }
+              >
+                <svg style={actionIconStyle} width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M11.4144 6.16828L14 3.58412L11.4144 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M1.48883 3.58374L14 3.58374" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M4.07446 8.32153L1.48884 10.9057L4.07446 13.4898" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M14 10.9058H1.48883" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span className="tp-product-tooltip tp-product-tooltip-right">Add To Compare</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="tp-product-content-2 pt-15">
+          <div className="tp-product-tag-2">
+            {item.tags.map((tag, idx) => (
+              <Link href="/shop" key={`${item.id}-${tag}`}>
+                {idx < item.tags.length - 1 ? `${tag},` : tag}
+              </Link>
+            ))}
+          </div>
+          <h3 className="tp-product-title-2">
+            <Link href={item.href}>{item.title}</Link>
+          </h3>
+          <div className="tp-product-rating-icon tp-product-rating-icon-2">
+            {Array.from({ length: 5 }).map((_, starIndex) => (
+              <span key={`${item.id}-star-${starIndex}`}>
+                <i className="fa-solid fa-star" />
+              </span>
+            ))}
+          </div>
+          <div className="tp-product-price-wrapper-2">
+            <span className={`tp-product-price-2 ${item.oldPrice ? "new-price" : ""}`}>
+              {item.price}
+            </span>
+            {item.oldPrice ? (
+              <span className="tp-product-price-2 old-price">{item.oldPrice}</span>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </div>
+  ));
 
   return (
     <section className="tp-trending-area pt-140 pb-150">
@@ -143,172 +257,13 @@ export function TrendingArrivalsSection({
               </div>
 
               <div className="tp-trending-slider">
-                <div ref={viewportRef} className="tp-trending-slider-active swiper-container" style={{ overflow: "hidden" }}>
-                  <div
-                    className="swiper-wrapper"
-                    onPointerDown={dragProps.onPointerDown}
-                    onClickCapture={dragProps.onClickCapture}
-                    style={{
-                      display: "flex",
-                      width: `${trackWidth}%`,
-                      transform: `translate3d(calc(-${translatePercent}% + ${dragOffset}px), 0, 0)`,
-                      transition: isDragging ? "none" : "transform 0.5s ease",
-                      ...dragProps.style,
-                    }}
-                  >
-                    {items.map((item) => (
-                      <div
-                        className="tp-trending-item swiper-slide"
-                        key={item.id}
-                        style={{ flex: `0 0 ${100 / Math.max(1, items.length)}%`, padding: "0 12px" }}
-                      >
-                        <div className="tp-product-item-2">
-                          <div className="tp-product-thumb-2 p-relative z-index-1 fix w-img">
-                            <Link href={item.href}>
-                              <img src={item.image} alt={item.title} />
-                            </Link>
-                            <div className="tp-product-action-2 tp-product-action-blackStyle">
-                              <div className="tp-product-action-item-2 d-flex flex-column">
-                                <button
-                                  type="button"
-                                  className="tp-product-action-btn-2 tp-product-add-cart-btn"
-                                  aria-label="Add to cart"
-                                  style={actionBtnStyle}
-                                  onClick={() =>
-                                    addItem({
-                                      id: item.productId ?? makeCartId(`trending-${item.id}`),
-                                      title: item.title,
-                                      href: item.href,
-                                      image: item.image,
-                                      price: item.priceValue ?? parsePrice(item.price),
-                                      quantity: 1,
-                                    })
-                                  }
-                                >
-                                  <svg style={actionIconStyle} width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path fillRule="evenodd" clipRule="evenodd" d="M3.34706 4.53799L3.85961 10.6239C3.89701 11.0923 4.28036 11.4436 4.74871 11.4436H4.75212H14.0265H14.0282C14.4711 11.4436 14.8493 11.1144 14.9122 10.6774L15.7197 5.11162C15.7384 4.97924 15.7053 4.84687 15.6245 4.73995C15.5446 4.63218 15.4273 4.5626 15.2947 4.54393C15.1171 4.55072 7.74498 4.54054 3.34706 4.53799Z" fill="currentColor" />
-                                    <path fillRule="evenodd" clipRule="evenodd" d="M12.6629 7.67446H10.3067C9.95394 7.67446 9.66919 7.38934 9.66919 7.03804C9.66919 6.68673 9.95394 6.40161 10.3067 6.40161H12.6629C13.0148 6.40161 13.3004 6.68673 13.3004 7.03804C13.3004 7.38934 13.0148 7.67446 12.6629 7.67446Z" fill="currentColor" />
-                                  </svg>
-                                  <span className="tp-product-tooltip tp-product-tooltip-right">Add to Cart</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  className="tp-product-action-btn-2 tp-product-quick-view-btn"
-                                  aria-label="Quick view"
-                                  style={actionBtnStyle}
-                                  onClick={() =>
-                                    setQuickViewProduct({
-                                      id: item.id,
-                                      title: item.title,
-                                      href: item.href,
-                                      image: item.image,
-                                      price: item.price,
-                                      oldPrice: item.oldPrice,
-                                      tags: item.tags,
-                                    })
-                                  }
-                                >
-                                  <svg style={actionIconStyle} width="18" height="15" viewBox="0 0 18 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path fillRule="evenodd" clipRule="evenodd" d="M8.99948 5.06828C7.80247 5.06828 6.82956 6.04044 6.82956 7.23542C6.82956 8.42951 7.80247 9.40077 8.99948 9.40077C10.1965 9.40077 11.1703 8.42951 11.1703 7.23542C11.1703 6.04044 10.1965 5.06828 8.99948 5.06828Z" fill="currentColor" />
-                                    <path fillRule="evenodd" clipRule="evenodd" d="M1.41273 7.2346C3.08674 10.9265 5.90646 13.1215 8.99978 13.1224C12.0931 13.1215 14.9128 10.9265 16.5868 7.2346C14.9128 3.54363 12.0931 1.34863 8.99978 1.34773C5.90736 1.34863 3.08674 3.54363 1.41273 7.2346Z" fill="currentColor" />
-                                  </svg>
-                                  <span className="tp-product-tooltip tp-product-tooltip-right">Quick View</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  className="tp-product-action-btn-2 tp-product-add-to-wishlist-btn"
-                                  aria-label="Add to wishlist"
-                                  style={actionBtnStyle}
-                                  onClick={() =>
-                                    addWishlistItem({
-                                      id: item.productId ?? makeCartId(`trend-${item.id}`),
-                                      title: item.title,
-                                      href: item.href,
-                                      image: item.image,
-                                      price: item.priceValue ?? parsePrice(item.price),
-                                    })
-                                  }
-                                >
-                                  <svg style={actionIconStyle} width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path fillRule="evenodd" clipRule="evenodd" d="M1.60355 7.98635C2.83622 11.8048 7.7062 14.8923 9.0004 15.6565C10.299 14.8844 15.2042 11.7628 16.3973 7.98985C17.1806 5.55102 16.4535 2.46177 13.5644 1.53473C12.1647 1.08741 10.532 1.35966 9.40484 2.22804C9.16921 2.40837 8.84214 2.41187 8.60476 2.23329C7.41078 1.33952 5.85105 1.07778 4.42936 1.53473C1.54465 2.4609 0.820172 5.55014 1.60355 7.98635Z" fill="currentColor" />
-                                  </svg>
-                                  <span className="tp-product-tooltip tp-product-tooltip-right">
-                                    Add To Wishlist
-                                  </span>
-                                </button>
-                                <button
-                                  type="button"
-                                  className="tp-product-action-btn-2 tp-product-add-to-compare-btn"
-                                  aria-label="Add to compare"
-                                  style={actionBtnStyle}
-                                  onClick={() =>
-                                    addCompareItem({
-                                      id: item.productId ?? makeCartId(`trend-${item.id}`),
-                                      title: item.title,
-                                      href: item.href,
-                                      image: item.image,
-                                      price: item.priceValue ?? parsePrice(item.price),
-                                      oldPrice: item.oldPrice ? parsePrice(item.oldPrice) : undefined,
-                                    })
-                                  }
-                                >
-                                  <svg style={actionIconStyle} width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M11.4144 6.16828L14 3.58412L11.4144 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                    <path d="M1.48883 3.58374L14 3.58374" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                    <path d="M4.07446 8.32153L1.48884 10.9057L4.07446 13.4898" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                    <path d="M14 10.9058H1.48883" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                  <span className="tp-product-tooltip tp-product-tooltip-right">Add To Compare</span>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="tp-product-content-2 pt-15">
-                            <div className="tp-product-tag-2">
-                              {item.tags.map((tag, idx) => (
-                                <Link href="/shop" key={`${item.id}-${tag}`}>
-                                  {idx < item.tags.length - 1 ? `${tag},` : tag}
-                                </Link>
-                              ))}
-                            </div>
-                            <h3 className="tp-product-title-2">
-                              <Link href={item.href}>{item.title}</Link>
-                            </h3>
-                            <div className="tp-product-rating-icon tp-product-rating-icon-2">
-                              {Array.from({ length: 5 }).map((_, index) => (
-                                <span key={`${item.id}-star-${index}`}>
-                                  <i className="fa-solid fa-star" />
-                                </span>
-                              ))}
-                            </div>
-                            <div className="tp-product-price-wrapper-2">
-                              <span className={`tp-product-price-2 ${item.oldPrice ? "new-price" : ""}`}>
-                                {item.price}
-                              </span>
-                              {item.oldPrice ? (
-                                <span className="tp-product-price-2 old-price">{item.oldPrice}</span>
-                              ) : null}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="tp-trending-slider-dot tp-swiper-dot text-center mt-45">
-                  {Array.from({ length: pageCount }).map((_, idx) => (
-                    <button
-                      key={`trend-dot-${idx}`}
-                      type="button"
-                      className={`swiper-pagination-bullet ${idx === page ? "swiper-pagination-bullet-active" : ""}`}
-                      aria-label={`Go to trending page ${idx + 1}`}
-                      onClick={() => setPage(idx)}
-                    >
-                      <span className="visually-hidden">{idx + 1}</span>
-                    </button>
-                  ))}
-                </div>
+                <LoopCarousel
+                  slides={slides}
+                  slidesPerView={2}
+                  gap={24}
+                  slideClassName="swiper-slide"
+                  ariaLabel="Trending arrivals"
+                />
               </div>
             </div>
           </div>
@@ -342,4 +297,3 @@ export function TrendingArrivalsSection({
     </section>
   );
 }
-

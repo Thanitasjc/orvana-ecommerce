@@ -2,9 +2,9 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import { useCart } from "@/components/shop/cart/CartProvider";
-import { useDragSlider } from "@/lib/hooks/useDragSlider";
+import { LoopCarousel } from "@/components/shop/home/LoopCarousel";
 
 type CategoryItem = {
   image: string;
@@ -59,43 +59,8 @@ const defaultItems: CategoryItem[] = [
 ];
 
 export function CategorySlider({ items = defaultItems }: CategorySliderProps) {
-  const [index, setIndex] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragProgress, setDragProgress] = useState<number | null>(null);
   const safeItems = useMemo(() => items.filter((item) => item.image), [items]);
   const { addItem } = useCart();
-  const scrollbarRef = useRef<HTMLDivElement | null>(null);
-  const dragOffsetRef = useRef(0);
-  const slidesPerView = 5;
-  const maxStartIndex = Math.max(0, safeItems.length - slidesPerView);
-
-  useEffect(() => {
-    if (index > maxStartIndex) setIndex(maxStartIndex);
-  }, [index, maxStartIndex]);
-
-  const viewportRef = useRef<HTMLDivElement | null>(null);
-  const {
-    dragOffset: trackDragOffset,
-    isDragging: isTrackDragging,
-    dragProps: trackDragProps,
-  } = useDragSlider({
-    viewportRef,
-    slidesPerView,
-    index,
-    maxIndex: maxStartIndex,
-    setIndex,
-  });
-
-  if (safeItems.length === 0) return null;
-
-  const effectiveIndex = isDragging && dragProgress !== null ? dragProgress * maxStartIndex : index;
-  const trackWidth = (safeItems.length / slidesPerView) * 100;
-  const translatePercent = (effectiveIndex / safeItems.length) * 100;
-  const scrollbarWidth = (slidesPerView / safeItems.length) * 100;
-  const maxThumbLeftPercent = Math.max(0, 100 - scrollbarWidth);
-  const normalizedProgress =
-    maxStartIndex === 0 ? 0 : isDragging && dragProgress !== null ? dragProgress : index / maxStartIndex;
-  const scrollbarPosition = normalizedProgress * maxThumbLeftPercent;
   const parsePrice = (value: string) => Number(value.replace(/[^0-9.]/g, "")) || 0;
   const makeCartId = (value: string) =>
     Math.abs(
@@ -104,69 +69,41 @@ export function CategorySlider({ items = defaultItems }: CategorySliderProps) {
       }, 7),
     );
 
-  const updateDragProgressFromClientX = useCallback(
-    (clientX: number) => {
-      const track = scrollbarRef.current;
-      if (!track || maxStartIndex <= 0) return;
+  if (safeItems.length === 0) return null;
 
-      const rect = track.getBoundingClientRect();
-      const thumbWidthPx = rect.width * (scrollbarWidth / 100);
-      const maxLeftPx = Math.max(0, rect.width - thumbWidthPx);
-      const rawLeftPx = clientX - rect.left - dragOffsetRef.current;
-      const clampedLeftPx = Math.min(Math.max(0, rawLeftPx), maxLeftPx);
-      const progress = maxLeftPx === 0 ? 0 : clampedLeftPx / maxLeftPx;
-      setDragProgress(progress);
-    },
-    [maxStartIndex, scrollbarWidth],
-  );
-
-  const beginDragAt = useCallback(
-    (clientX: number) => {
-      const track = scrollbarRef.current;
-      if (!track || maxStartIndex <= 0) return;
-
-      const rect = track.getBoundingClientRect();
-      const thumbWidthPx = rect.width * (scrollbarWidth / 100);
-      const thumbLeftPx = (scrollbarPosition / 100) * rect.width;
-      dragOffsetRef.current = Math.min(thumbWidthPx, Math.max(0, clientX - rect.left - thumbLeftPx));
-      setIsDragging(true);
-      updateDragProgressFromClientX(clientX);
-    },
-    [maxStartIndex, scrollbarPosition, scrollbarWidth, updateDragProgressFromClientX],
-  );
-
-  useEffect(() => {
-    if (!isDragging) return;
-
-    const onMouseMove = (event: MouseEvent) => {
-      updateDragProgressFromClientX(event.clientX);
-    };
-    const onTouchMove = (event: TouchEvent) => {
-      if (event.touches.length === 0) return;
-      updateDragProgressFromClientX(event.touches[0].clientX);
-    };
-    const stopDrag = () => {
-      if (dragProgress !== null) {
-        setIndex(Math.round(dragProgress * maxStartIndex));
-      }
-      setDragProgress(null);
-      setIsDragging(false);
-    };
-
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", stopDrag);
-    window.addEventListener("touchmove", onTouchMove, { passive: true });
-    window.addEventListener("touchend", stopDrag);
-    window.addEventListener("touchcancel", stopDrag);
-
-    return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", stopDrag);
-      window.removeEventListener("touchmove", onTouchMove);
-      window.removeEventListener("touchend", stopDrag);
-      window.removeEventListener("touchcancel", stopDrag);
-    };
-  }, [dragProgress, isDragging, maxStartIndex, updateDragProgressFromClientX]);
+  const slides = safeItems.map((item, itemIndex) => (
+    <div className="tp-category-item-2 p-relative z-index-1 text-center" key={`${item.title}-${itemIndex}`}>
+      <div className="tp-category-thumb-2">
+        <Link href={item.href}>
+          <img src={item.image} alt={item.title} />
+        </Link>
+      </div>
+      <div className="tp-category-content-2">
+        <span>{item.fromPrice}</span>
+        <h3 className="tp-category-title-2">
+          <Link href={item.href}>{item.title}</Link>
+        </h3>
+        <div className="tp-category-btn-2">
+          <button
+            type="button"
+            className="tp-btn tp-btn-border"
+            onClick={() =>
+              addItem({
+                id: item.productId ?? makeCartId(`category-${item.title}`),
+                title: item.title,
+                href: item.href,
+                image: item.image,
+                price: item.priceValue ?? parsePrice(item.fromPrice),
+                quantity: 1,
+              })
+            }
+          >
+            Add to Cart
+          </button>
+        </div>
+      </div>
+    </div>
+  ));
 
   return (
     <section className="tp-category-area pb-95 pt-95">
@@ -200,81 +137,13 @@ export function CategorySlider({ items = defaultItems }: CategorySliderProps) {
         <div className="row">
           <div className="col-xl-12">
             <div className="tp-category-slider-2">
-              <div ref={viewportRef} className="tp-category-slider-active-2 swiper-container mb-50" style={{ overflow: "hidden" }}>
-                <div
-                  className="swiper-wrapper"
-                  onPointerDown={trackDragProps.onPointerDown}
-                  onClickCapture={trackDragProps.onClickCapture}
-                  style={{
-                    width: `${trackWidth}%`,
-                    display: "flex",
-                    transform: `translate3d(calc(-${translatePercent}% + ${trackDragOffset}px), 0, 0)`,
-                    transition: isDragging || isTrackDragging ? "none" : "transform 0.5s ease",
-                    ...trackDragProps.style,
-                  }}
-                >
-                  {safeItems.map((item, itemIndex) => (
-                    <div
-                      className="tp-category-item-2 p-relative z-index-1 text-center swiper-slide"
-                      key={`${item.title}-${itemIndex}`}
-                      style={{ flex: `0 0 ${100 / safeItems.length}%`, padding: "0 12px" }}
-                    >
-                      <div className="tp-category-thumb-2">
-                        <Link href={item.href}>
-                          <img src={item.image} alt={item.title} />
-                        </Link>
-                      </div>
-                      <div className="tp-category-content-2">
-                        <span>{item.fromPrice}</span>
-                        <h3 className="tp-category-title-2">
-                          <Link href={item.href}>{item.title}</Link>
-                        </h3>
-                        <div className="tp-category-btn-2">
-                          <button
-                            type="button"
-                            className="tp-btn tp-btn-border"
-                            onClick={() =>
-                              addItem({
-                                id: item.productId ?? makeCartId(`category-${item.title}`),
-                                title: item.title,
-                                href: item.href,
-                                image: item.image,
-                                price: item.priceValue ?? parsePrice(item.fromPrice),
-                                quantity: 1,
-                              })
-                            }
-                          >
-                            Add to Cart
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div
-                ref={scrollbarRef}
-                className="swiper-scrollbar tp-swiper-scrollbar tp-swiper-scrollbar-drag"
-                style={{ cursor: maxStartIndex > 0 ? "pointer" : "default", touchAction: "pan-y" }}
-                onMouseDown={(event) => {
-                  beginDragAt(event.clientX);
-                }}
-                onTouchStart={(event) => {
-                  if (event.touches.length === 0) return;
-                  beginDragAt(event.touches[0].clientX);
-                }}
-              >
-                <div
-                  className="tp-swiper-scrollbar-drag"
-                  style={{
-                    width: `${scrollbarWidth}%`,
-                    position: "relative",
-                    left: `${scrollbarPosition}%`,
-                    transition: isDragging ? "none" : "left 0.5s ease",
-                    cursor: maxStartIndex > 0 ? (isDragging ? "grabbing" : "grab") : "default",
-                  }}
-                />
-              </div>
+              <LoopCarousel
+                slides={slides}
+                slidesPerView={5}
+                gap={24}
+                slideClassName="swiper-slide"
+                ariaLabel="Categories"
+              />
             </div>
           </div>
         </div>
@@ -282,4 +151,3 @@ export function CategorySlider({ items = defaultItems }: CategorySliderProps) {
     </section>
   );
 }
-

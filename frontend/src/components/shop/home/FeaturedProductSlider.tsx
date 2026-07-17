@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useDragSlider } from "@/lib/hooks/useDragSlider";
+import { useMemo } from "react";
+import { LoopCarousel } from "@/components/shop/home/LoopCarousel";
 
 type FeaturedItem = {
   id: string;
@@ -65,46 +65,44 @@ export function FeaturedProductSlider({
   items = defaultItems,
   sectionTitle = "This Week's Featured",
 }: FeaturedProductSliderProps) {
-  const [index, setIndex] = useState(0);
   const safeItems = useMemo(() => items.filter((item) => item.image), [items]);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [containerWidth, setContainerWidth] = useState(0);
-
-  const SLIDE_WIDTH = 612;
-  const GAP = 8;
-  const step = SLIDE_WIDTH + GAP;
-  const trackWidth =
-    safeItems.length * SLIDE_WIDTH + Math.max(0, safeItems.length - 1) * GAP;
-  const maxTranslate = Math.max(0, trackWidth - containerWidth);
-  const maxIndex = Math.ceil(maxTranslate / step);
-  const translate = Math.min(index * step, maxTranslate);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const update = () => setContainerWidth(el.clientWidth);
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (index > maxIndex) setIndex(maxIndex);
-  }, [index, maxIndex]);
-
-  const prev = () => setIndex((prevIndex) => Math.max(0, prevIndex - 1));
-  const next = () => setIndex((prevIndex) => Math.min(maxIndex, prevIndex + 1));
-
-  const { dragOffset, isDragging, dragProps } = useDragSlider({
-    viewportRef: containerRef,
-    stepPx: step,
-    index,
-    maxIndex,
-    setIndex,
-  });
 
   if (safeItems.length === 0) return null;
+
+  const slides = safeItems.map((item) => (
+    <div key={item.id} className="tp-featured-item white-bg p-relative z-index-1" style={{ minHeight: "380px", height: "100%" }}>
+      <div
+        className="tp-featured-thumb include-bg"
+        style={{
+          backgroundImage: `url(${item.image})`,
+          minHeight: "380px",
+        }}
+      />
+      <div className="tp-featured-content">
+        <h3 className="tp-featured-title">
+          <Link href={item.href}>{item.title}</Link>
+        </h3>
+        <div className="tp-featured-price-wrapper">
+          <span className="tp-featured-price new-price">{item.price}</span>
+          {item.oldPrice ? (
+            <span className="tp-featured-price old-price">{item.oldPrice}</span>
+          ) : null}
+        </div>
+        <div className="tp-product-rating-icon tp-product-rating-icon-2">
+          {Array.from({ length: 5 }).map((_, starIndex) => (
+            <span key={`${item.id}-star-${starIndex}`}>
+              <i className="fa-solid fa-star" />
+            </span>
+          ))}
+        </div>
+        <div className="tp-featured-btn">
+          <Link href={item.href} className="tp-btn tp-btn-border tp-btn-border-sm">
+            Shop Now
+          </Link>
+        </div>
+      </div>
+    </div>
+  ));
 
   return (
     <section className="tp-featured-slider-area grey-bg-6 fix pt-95 pb-120">
@@ -139,107 +137,13 @@ export function FeaturedProductSlider({
         <div className="row">
           <div className="col-xl-12">
             <div className="tp-featured-slider">
-              <div
-                ref={containerRef}
-                className="tp-featured-slider-active swiper-container"
-                style={{
-                  overflow: "hidden",
-                }}
-              >
-                <div
-                  className="swiper-wrapper"
-                  onPointerDown={dragProps.onPointerDown}
-                  onClickCapture={dragProps.onClickCapture}
-                  style={{
-                    display: "flex",
-                    gap: `${GAP}px`,
-                    alignItems: "stretch",
-                    transform: `translate3d(calc(-${translate}px + ${dragOffset}px), 0, 0)`,
-                    transition: isDragging ? "none" : "transform 0.5s ease",
-                    ...dragProps.style,
-                  }}
-                >
-                  {safeItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className="tp-featured-item swiper-slide white-bg p-relative z-index-1"
-                      style={{
-                        flex: "0 0 612px",
-                        minHeight: "380px",
-                      }}
-                    >
-                      <div
-                        className="tp-featured-thumb include-bg"
-                        style={{
-                          backgroundImage: `url(${item.image})`,
-                          minHeight: "380px",
-                        }}
-                      />
-                      <div className="tp-featured-content">
-                        <h3 className="tp-featured-title">
-                          <Link href={item.href}>{item.title}</Link>
-                        </h3>
-                        <div className="tp-featured-price-wrapper">
-                          <span className="tp-featured-price new-price">{item.price}</span>
-                          {item.oldPrice ? (
-                            <span className="tp-featured-price old-price">{item.oldPrice}</span>
-                          ) : null}
-                        </div>
-                        <div className="tp-product-rating-icon tp-product-rating-icon-2">
-                          {Array.from({ length: 5 }).map((_, starIndex) => (
-                            <span key={`${item.id}-star-${starIndex}`}>
-                              <i className="fa-solid fa-star" />
-                            </span>
-                          ))}
-                        </div>
-                        <div className="tp-featured-btn">
-                          <Link href={item.href} className="tp-btn tp-btn-border tp-btn-border-sm">
-                            Shop Now
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="tp-featured-slider-arrow mt-45">
-                <button className="tp-featured-slider-button-prev" type="button" onClick={prev}>
-                  <svg width="33" height="16" viewBox="0 0 33 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path
-                      d="M1.97974 7.97534L31.9797 7.97534"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M8.02954 0.999999L0.999912 7.99942L8.02954 15"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-                <button className="tp-featured-slider-button-next" type="button" onClick={next}>
-                  <svg width="33" height="16" viewBox="0 0 33 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path
-                      d="M30.9795 7.97534L0.979492 7.97534"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M24.9297 0.999999L31.9593 7.99942L24.9297 15"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-              </div>
+              <LoopCarousel
+                slides={slides}
+                slideWidthPx={620}
+                gap={8}
+                slideClassName="swiper-slide"
+                ariaLabel="Featured products"
+              />
             </div>
           </div>
         </div>
@@ -247,4 +151,3 @@ export function FeaturedProductSlider({
     </section>
   );
 }
-
