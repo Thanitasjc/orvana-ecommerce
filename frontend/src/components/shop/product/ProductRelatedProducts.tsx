@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCart } from "@/components/shop/cart/CartProvider";
+import { useDragSlider } from "@/lib/hooks/useDragSlider";
 import type { ApiProduct } from "@/lib/api/products";
 import { defaultProductImageForId, formatPriceTHB, productHref, productImage } from "@/lib/api/products";
 
@@ -68,6 +69,19 @@ export function ProductRelatedProducts({ products }: ProductRelatedProductsProps
     };
   }, [isDragging, items.length, maxStartIndex, slidesPerView, updateDragProgress]);
 
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const {
+    dragOffset: trackDragOffset,
+    isDragging: isTrackDragging,
+    dragProps: trackDragProps,
+  } = useDragSlider({
+    viewportRef,
+    slidesPerView,
+    index,
+    maxIndex: maxStartIndex,
+    setIndex,
+  });
+
   if (items.length === 0) return null;
 
   const effectiveIndex = isDragging && dragProgress !== null ? dragProgress * maxStartIndex : index;
@@ -88,14 +102,17 @@ export function ProductRelatedProducts({ products }: ProductRelatedProductsProps
 
         <div className="row">
           <div className="tp-product-related-slider">
-            <div className="tp-product-related-slider-active swiper-container mb-10" style={{ overflow: "hidden" }}>
+            <div ref={viewportRef} className="tp-product-related-slider-active swiper-container mb-10" style={{ overflow: "hidden" }}>
               <div
                 className="swiper-wrapper"
+                onPointerDown={trackDragProps.onPointerDown}
+                onClickCapture={trackDragProps.onClickCapture}
                 style={{
                   display: "flex",
                   width: `${trackWidth}%`,
-                  transform: `translateX(-${translatePercent}%)`,
-                  transition: isDragging ? "none" : "transform 0.35s ease",
+                  transform: `translateX(calc(-${translatePercent}% + ${trackDragOffset}px))`,
+                  transition: isDragging || isTrackDragging ? "none" : "transform 0.35s ease",
+                  ...trackDragProps.style,
                 }}
               >
                 {items.map((product) => {

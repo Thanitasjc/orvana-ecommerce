@@ -1,7 +1,8 @@
  "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useDragSlider } from "@/lib/hooks/useDragSlider";
 import { useCart } from "@/components/shop/cart/CartProvider";
 import { parseDisplayPrice, useCompare } from "@/components/shop/compare/CompareProvider";
 import { useWishlist } from "@/components/shop/wishlist/WishlistProvider";
@@ -98,9 +99,19 @@ export function TrendingArrivalsSection({
       }, 7),
     );
 
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     if (page > maxStartIndex) setPage(maxStartIndex);
   }, [page, maxStartIndex]);
+
+  const { dragOffset, isDragging, dragProps } = useDragSlider({
+    viewportRef,
+    slidesPerView,
+    index: page,
+    maxIndex: maxStartIndex,
+    setIndex: setPage,
+  });
 
   return (
     <section className="tp-trending-area pt-140 pb-150">
@@ -132,14 +143,17 @@ export function TrendingArrivalsSection({
               </div>
 
               <div className="tp-trending-slider">
-                <div className="tp-trending-slider-active swiper-container" style={{ overflow: "hidden" }}>
+                <div ref={viewportRef} className="tp-trending-slider-active swiper-container" style={{ overflow: "hidden" }}>
                   <div
                     className="swiper-wrapper"
+                    onPointerDown={dragProps.onPointerDown}
+                    onClickCapture={dragProps.onClickCapture}
                     style={{
                       display: "flex",
                       width: `${trackWidth}%`,
-                      transform: `translate3d(-${translatePercent}%, 0, 0)`,
-                      transition: "transform 0.5s ease",
+                      transform: `translate3d(calc(-${translatePercent}% + ${dragOffset}px), 0, 0)`,
+                      transition: isDragging ? "none" : "transform 0.5s ease",
+                      ...dragProps.style,
                     }}
                   >
                     {items.map((item) => (

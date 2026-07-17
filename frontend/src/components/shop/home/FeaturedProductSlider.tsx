@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useDragSlider } from "@/lib/hooks/useDragSlider";
 
 type FeaturedItem = {
   id: string;
@@ -95,6 +96,14 @@ export function FeaturedProductSlider({
   const prev = () => setIndex((prevIndex) => Math.max(0, prevIndex - 1));
   const next = () => setIndex((prevIndex) => Math.min(maxIndex, prevIndex + 1));
 
+  const { dragOffset, isDragging, dragProps } = useDragSlider({
+    viewportRef: containerRef,
+    stepPx: step,
+    index,
+    maxIndex,
+    setIndex,
+  });
+
   if (safeItems.length === 0) return null;
 
   return (
@@ -139,12 +148,15 @@ export function FeaturedProductSlider({
               >
                 <div
                   className="swiper-wrapper"
+                  onPointerDown={dragProps.onPointerDown}
+                  onClickCapture={dragProps.onClickCapture}
                   style={{
                     display: "flex",
                     gap: `${GAP}px`,
                     alignItems: "stretch",
-                    transform: `translate3d(-${translate}px, 0, 0)`,
-                    transition: "transform 0.5s ease",
+                    transform: `translate3d(calc(-${translate}px + ${dragOffset}px), 0, 0)`,
+                    transition: isDragging ? "none" : "transform 0.5s ease",
+                    ...dragProps.style,
                   }}
                 >
                   {safeItems.map((item) => (

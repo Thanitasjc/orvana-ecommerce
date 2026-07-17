@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCart } from "@/components/shop/cart/CartProvider";
+import { useDragSlider } from "@/lib/hooks/useDragSlider";
 
 type CategoryItem = {
   image: string;
@@ -71,6 +72,19 @@ export function CategorySlider({ items = defaultItems }: CategorySliderProps) {
   useEffect(() => {
     if (index > maxStartIndex) setIndex(maxStartIndex);
   }, [index, maxStartIndex]);
+
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const {
+    dragOffset: trackDragOffset,
+    isDragging: isTrackDragging,
+    dragProps: trackDragProps,
+  } = useDragSlider({
+    viewportRef,
+    slidesPerView,
+    index,
+    maxIndex: maxStartIndex,
+    setIndex,
+  });
 
   if (safeItems.length === 0) return null;
 
@@ -186,14 +200,17 @@ export function CategorySlider({ items = defaultItems }: CategorySliderProps) {
         <div className="row">
           <div className="col-xl-12">
             <div className="tp-category-slider-2">
-              <div className="tp-category-slider-active-2 swiper-container mb-50" style={{ overflow: "hidden" }}>
+              <div ref={viewportRef} className="tp-category-slider-active-2 swiper-container mb-50" style={{ overflow: "hidden" }}>
                 <div
                   className="swiper-wrapper"
+                  onPointerDown={trackDragProps.onPointerDown}
+                  onClickCapture={trackDragProps.onClickCapture}
                   style={{
                     width: `${trackWidth}%`,
                     display: "flex",
-                    transform: `translate3d(-${translatePercent}%, 0, 0)`,
-                    transition: isDragging ? "none" : "transform 0.5s ease",
+                    transform: `translate3d(calc(-${translatePercent}% + ${trackDragOffset}px), 0, 0)`,
+                    transition: isDragging || isTrackDragging ? "none" : "transform 0.5s ease",
+                    ...trackDragProps.style,
                   }}
                 >
                   {safeItems.map((item, itemIndex) => (
