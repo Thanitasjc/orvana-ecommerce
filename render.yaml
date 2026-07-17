@@ -38,6 +38,22 @@ services:
         value: database
       - key: FILESYSTEM_DISK
         value: public
+      - key: UPLOAD_DISK
+        value: s3
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_DEFAULT_REGION
+        value: ap-northeast-1
+      - key: AWS_BUCKET
+        value: media
+      - key: AWS_ENDPOINT
+        value: https://cormktzdjxsaqafxsdkr.storage.supabase.co/storage/v1/s3
+      - key: AWS_URL
+        value: https://cormktzdjxsaqafxsdkr.supabase.co/storage/v1/object/public/media
+      - key: AWS_USE_PATH_STYLE_ENDPOINT
+        value: "true"
       - key: OMISE_PUBLIC_KEY
         value: pkey_test_689gs96ehzjmf5537qy
       - key: OMISE_SECRET_KEY
