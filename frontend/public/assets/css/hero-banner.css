@@ -62,11 +62,13 @@ section.hero-slider .hero-content {
 section.hero-slider .hero-content h1 {
   font-size: 72px;
   margin-bottom: 20px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
 }
 
 section.hero-slider .hero-content p {
   font-size: 22px;
   margin-bottom: 30px;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
 }
 
 section.hero-slider .btn {
