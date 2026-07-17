@@ -168,15 +168,7 @@ export function HeroBanner({ slides = defaultSlides }: HeroBannerProps) {
                     draggable={false}
                   />
                 )}
-                {overlay && (
-                  <>
-                    <div
-                      className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/55 via-black/25 to-transparent"
-                      aria-hidden="true"
-                    />
-                    <HeroOverlay slide={slide} />
-                  </>
-                )}
+                {overlay && <HeroOverlay slide={slide} />}
               </div>
             )}
           </div>
