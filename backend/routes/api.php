@@ -36,6 +36,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
   Route::get('health', [HealthController::class, 'show']);
+  Route::get('health/s3-diag', [HealthController::class, 's3Diagnostic']);
   Route::get('categories', [CategoryController::class, 'index']);
   Route::get('products', [ProductController::class, 'index']);
   Route::get('products/{slug}', [ProductController::class, 'show']);
