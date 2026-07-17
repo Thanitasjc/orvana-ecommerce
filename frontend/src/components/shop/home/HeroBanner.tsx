@@ -11,22 +11,17 @@ type HeroBannerProps = {
 };
 
 const heroMediaStyle: CSSProperties = {
-  position: "absolute",
-  inset: 0,
+  position: "relative",
+  width: "100%",
   overflow: "hidden",
   zIndex: 0,
 };
 
 const youtubeCoverStyle: CSSProperties = {
   position: "absolute",
-  top: "50%",
-  left: "50%",
-  width: "177.78vh",
-  height: "100vh",
-  minWidth: "100%",
-  minHeight: "56.25vw",
-  maxWidth: "none",
-  transform: "translate(-50%, -50%)",
+  inset: 0,
+  width: "100%",
+  height: "100%",
   border: 0,
   pointerEvents: "none",
 };
