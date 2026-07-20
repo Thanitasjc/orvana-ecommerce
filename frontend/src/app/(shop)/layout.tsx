@@ -4,6 +4,7 @@ import { CompareProvider } from "@/components/shop/compare/CompareProvider";
 import { WishlistProvider } from "@/components/shop/wishlist/WishlistProvider";
 import { Header } from "@/components/shop/Header";
 import { MobileBottomNav } from "@/components/shop/MobileBottomNav";
+import { PwaInstallPrompt } from "@/components/shop/PwaInstallPrompt";
 import { ShopStyles } from "@/components/shop/ShopStyles";
 import { fetchHeaderCms } from "@/lib/api/headerCms";
 
@@ -25,6 +26,7 @@ export default async function ShopLayout({
               <main className="overflow-x-clip">{children}</main>
               <Footer />
             </div>
+            <PwaInstallPrompt />
             <MobileBottomNav />
           </WishlistProvider>
         </CompareProvider>
