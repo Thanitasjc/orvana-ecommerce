@@ -4,9 +4,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminPanel } from "@/components/admin/AdminPanel";
 import { AdminProductImagePicker } from "@/components/admin/AdminProductImagePicker";
 import { AdminHeaderMenuFormModal } from "@/components/admin/cms/AdminHeaderMenuFormModal";
+import { AdminHeaderMegaMenuModal } from "@/components/admin/cms/AdminHeaderMegaMenuModal";
 import { fetchAdminHeaderCms, saveAdminHeaderCms } from "@/lib/api/headerCms";
 import { newId } from "@/lib/cms/homepageCms";
-import { defaultHeaderCms, type HeaderCmsState, type HeaderMenuItem } from "@/lib/cms/headerCms";
+import {
+  defaultHeaderCms,
+  defaultShopMegaMenu,
+  type HeaderCmsState,
+  type HeaderMegaMenuConfig,
+  type HeaderMenuItem,
+  type HeaderTopbarLanguage,
+} from "@/lib/cms/headerCms";
 import { resolveProductImage } from "@/lib/api/products";
 import { getCookie, STAFF_TOKEN_KEY } from "@/lib/auth/cookies";
 
@@ -23,38 +31,23 @@ function TrashIcon() {
 }
 
 export function AdminHeaderCmsEditor() {
-  const [header, setHeader] = useState<HeaderCmsState>(defaultHeaderCms);
+  const [draft, setDraft] = useState<HeaderCmsState>(defaultHeaderCms);
+  const [baseline, setBaseline] = useState<HeaderCmsState>(defaultHeaderCms);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [menuFormOpen, setMenuFormOpen] = useState(false);
+  const [megaFormOpen, setMegaFormOpen] = useState(false);
   const [editingMenu, setEditingMenu] = useState<HeaderMenuItem | null>(null);
+  const [editingMegaMenu, setEditingMegaMenu] = useState<HeaderMenuItem | null>(null);
+
+  const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(baseline), [draft, baseline]);
 
   const sortedMenuItems = useMemo(
-    () => [...header.menuItems].sort((a, b) => a.sortOrder - b.sortOrder),
-    [header.menuItems],
+    () => [...draft.menuItems].sort((a, b) => a.sortOrder - b.sortOrder),
+    [draft.menuItems],
   );
-
-  const persist = useCallback(async (next: HeaderCmsState) => {
-    const token = getCookie(STAFF_TOKEN_KEY);
-    if (!token) {
-      setLoadError("กรุณาเข้าสู่ระบบ admin");
-      return;
-    }
-
-    setSaving(true);
-    setLoadError(null);
-
-    try {
-      const saved = await saveAdminHeaderCms(next, token);
-      setHeader(saved);
-    } catch {
-      setLoadError("บันทึก Header ไม่สำเร็จ");
-    } finally {
-      setSaving(false);
-    }
-  }, []);
 
   const showMessage = useCallback((text: string) => {
     setMessage(text);
@@ -70,38 +63,111 @@ export function AdminHeaderCmsEditor() {
     }
 
     void fetchAdminHeaderCms(token)
-      .then((data) => setHeader(data))
+      .then((data) => {
+        setDraft(data);
+        setBaseline(data);
+      })
       .catch(() => setLoadError("โหลด Header CMS ไม่สำเร็จ"))
       .finally(() => setLoading(false));
   }, []);
 
-  function patchHeader(patch: Partial<HeaderCmsState>) {
-    const next = { ...header, ...patch };
-    setHeader(next);
-    void persist(next);
-    showMessage("บันทึกแล้ว");
+  useEffect(() => {
+    if (!dirty) return;
+
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty]);
+
+  async function handleSave() {
+    const token = getCookie(STAFF_TOKEN_KEY);
+    if (!token) {
+      setLoadError("กรุณาเข้าสู่ระบบ admin");
+      return;
+    }
+
+    setSaving(true);
+    setLoadError(null);
+
+    try {
+      const saved = await saveAdminHeaderCms(draft, token);
+      setDraft(saved);
+      setBaseline(saved);
+      showMessage("บันทึก Header แล้ว");
+    } catch {
+      setLoadError("บันทึก Header ไม่สำเร็จ");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function updateTopbar(patch: Partial<HeaderCmsState["topbar"]>) {
+    setDraft((current) => ({ ...current, topbar: { ...current.topbar, ...patch } }));
+  }
+
+  function addLanguage() {
+    const code = `lang-${draft.topbar.languages.length + 1}`;
+    updateTopbar({
+      languages: [
+        ...draft.topbar.languages,
+        { code, label: "New Language", enabled: true },
+      ],
+    });
+  }
+
+  function updateLanguage(index: number, patch: Partial<HeaderTopbarLanguage>) {
+    updateTopbar({
+      languages: draft.topbar.languages.map((language, languageIndex) =>
+        languageIndex === index ? { ...language, ...patch } : language,
+      ),
+    });
+  }
+
+  function deleteLanguage(index: number) {
+    const languages = draft.topbar.languages.filter((_, languageIndex) => languageIndex !== index);
+    const defaultLanguage = languages.some((language) => language.code === draft.topbar.defaultLanguage)
+      ? draft.topbar.defaultLanguage
+      : languages[0]?.code || "th";
+    updateTopbar({ languages, defaultLanguage });
   }
 
   function saveMenuItem(item: HeaderMenuItem) {
-    const exists = header.menuItems.some((entry) => entry.id === item.id);
+    const exists = draft.menuItems.some((entry) => entry.id === item.id);
     const menuItems = exists
-      ? header.menuItems.map((entry) => (entry.id === item.id ? item : entry))
-      : [...header.menuItems, { ...item, id: item.id || newId("menu") }];
+      ? draft.menuItems.map((entry) => (entry.id === item.id ? item : entry))
+      : [...draft.menuItems, { ...item, id: item.id || newId("menu") }];
 
-    patchHeader({ menuItems });
+    setDraft((current) => ({ ...current, menuItems }));
     setMenuFormOpen(false);
     setEditingMenu(null);
-    showMessage(exists ? "แก้ไขเมนูแล้ว" : "เพิ่มเมนูแล้ว");
+    showMessage(exists ? "อัปเดตเมนูในแบบร่างแล้ว" : "เพิ่มเมนูในแบบร่างแล้ว");
+  }
+
+  function saveMegaMenu(menuId: string, megaMenu: HeaderMegaMenuConfig | null) {
+    setDraft((current) => ({
+      ...current,
+      menuItems: current.menuItems.map((item) =>
+        item.id === menuId ? { ...item, megaMenu } : item,
+      ),
+    }));
+    setMegaFormOpen(false);
+    setEditingMegaMenu(null);
+    showMessage("อัปเดต Mega Menu ในแบบร่างแล้ว");
   }
 
   function deleteMenuItem(id: string) {
     if (!window.confirm("ลบเมนูนี้ใช่หรือไม่?")) return;
-    patchHeader({
-      menuItems: header.menuItems
+    setDraft((current) => ({
+      ...current,
+      menuItems: current.menuItems
         .filter((item) => item.id !== id)
         .map((item, index) => ({ ...item, sortOrder: index })),
-    });
-    showMessage("ลบเมนูแล้ว");
+    }));
+    showMessage("ลบเมนูจากแบบร่างแล้ว");
   }
 
   function moveMenuItem(index: number, direction: -1 | 1) {
@@ -110,54 +176,180 @@ export function AdminHeaderCmsEditor() {
     if (targetIndex < 0 || targetIndex >= items.length) return;
 
     [items[index], items[targetIndex]] = [items[targetIndex], items[index]];
-    patchHeader({
+    setDraft((current) => ({
+      ...current,
       menuItems: items.map((item, sortOrder) => ({ ...item, sortOrder })),
-    });
+    }));
   }
 
-  const logoPreview = resolveProductImage(header.logoUrl);
+  function enableMegaMenu(menuItem: HeaderMenuItem) {
+    setEditingMegaMenu(menuItem);
+    setMegaFormOpen(true);
+  }
+
+  function createMegaMenu(menuItem: HeaderMenuItem) {
+    setEditingMegaMenu({
+      ...menuItem,
+      megaMenu: defaultShopMegaMenu,
+    });
+    setMegaFormOpen(true);
+  }
+
+  const logoPreview = resolveProductImage(draft.logoUrl);
 
   return (
     <>
       <AdminPanel
-        title="Header — โลโก้ & เมนู"
+        title="Header — Topbar, Menu & Mega Menu"
         action={
-          <button
-            type="button"
-            onClick={() => {
-              setEditingMenu(null);
-              setMenuFormOpen(true);
-            }}
-            className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500"
-          >
-            + เพิ่มเมนู
-          </button>
+          <div className="flex items-center gap-2">
+            {dirty ? <span className="text-xs text-amber-300">มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก</span> : null}
+            <button
+              type="button"
+              disabled={!dirty || saving}
+              onClick={() => void handleSave()}
+              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-40"
+            >
+              {saving ? "กำลังบันทึก..." : "บันทึก Header"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingMenu(null);
+                setMenuFormOpen(true);
+              }}
+              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500"
+            >
+              + เพิ่มเมนู
+            </button>
+          </div>
         }
       >
-        <p className="mb-4 text-sm text-slate-400">จัดการโลโก้และรายการเมนูบน Header หน้าร้าน</p>
+        <p className="mb-4 text-sm text-slate-400">
+          จัดการ Topbar, โลโก้, เมนูหลัก และ Mega Menu ของหน้าร้าน
+        </p>
         {loading ? <p className="mb-3 text-sm text-slate-400">กำลังโหลด...</p> : null}
         {loadError ? <p className="mb-3 text-sm text-rose-400">{loadError}</p> : null}
-        {saving ? <p className="mb-3 text-sm text-slate-400">กำลังบันทึก...</p> : null}
         {message ? <p className="mb-3 text-sm text-emerald-400">{message}</p> : null}
 
         {!loading ? (
           <>
             <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-white">Topbar</h4>
+                <label className="flex items-center gap-2 text-xs text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={draft.topbar.enabled}
+                    onChange={(event) => updateTopbar({ enabled: event.target.checked })}
+                  />
+                  แสดง Topbar
+                </label>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-slate-400">Facebook URL</label>
+                  <input
+                    value={draft.topbar.facebookUrl}
+                    onChange={(event) => updateTopbar({ facebookUrl: event.target.value })}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-slate-400">ข้อความผู้ติดตาม</label>
+                  <input
+                    value={draft.topbar.facebookFollowers}
+                    onChange={(event) => updateTopbar({ facebookFollowers: event.target.value })}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-slate-400">เบอร์โทร</label>
+                  <input
+                    value={draft.topbar.phone}
+                    onChange={(event) => updateTopbar({ phone: event.target.value })}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-slate-400">ภาษาเริ่มต้น</label>
+                  <select
+                    value={draft.topbar.defaultLanguage}
+                    onChange={(event) => updateTopbar({ defaultLanguage: event.target.value })}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white"
+                  >
+                    {draft.topbar.languages.map((language) => (
+                      <option key={language.code} value={language.code}>
+                        {language.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <h5 className="text-xs font-semibold uppercase tracking-wide text-slate-400">ภาษาใน Topbar</h5>
+                  <button
+                    type="button"
+                    onClick={addLanguage}
+                    className="rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-200 hover:bg-slate-800"
+                  >
+                    + เพิ่มภาษา
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {draft.topbar.languages.map((language, index) => (
+                    <div key={`${language.code}-${index}`} className="grid gap-2 md:grid-cols-[120px_1fr_auto_auto]">
+                      <input
+                        value={language.code}
+                        onChange={(event) => updateLanguage(index, { code: event.target.value })}
+                        className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white"
+                        placeholder="th"
+                      />
+                      <input
+                        value={language.label}
+                        onChange={(event) => updateLanguage(index, { label: event.target.value })}
+                        className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white"
+                        placeholder="ไทย"
+                      />
+                      <label className="flex items-center gap-2 text-xs text-slate-300">
+                        <input
+                          type="checkbox"
+                          checked={language.enabled}
+                          onChange={(event) => updateLanguage(index, { enabled: event.target.checked })}
+                        />
+                        แสดง
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => deleteLanguage(index)}
+                        className="rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:bg-slate-800"
+                      >
+                        ลบ
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900/40 p-4">
               <h4 className="mb-3 text-sm font-semibold text-white">โลโก้</h4>
               <div className="mb-4 flex h-16 items-center rounded-lg border border-slate-800 bg-slate-950 px-4">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={logoPreview} alt={header.logoAlt} className="max-h-10 w-auto" />
+                <img src={logoPreview} alt={draft.logoAlt} className="max-h-10 w-auto" />
               </div>
               <AdminProductImagePicker
-                value={header.logoUrl}
-                onChange={(logoUrl) => patchHeader({ logoUrl })}
+                value={draft.logoUrl}
+                onChange={(logoUrl) => setDraft((current) => ({ ...current, logoUrl }))}
               />
               <div className="mt-4">
                 <label className="mb-1 block text-xs font-semibold text-slate-400">Alt text (SEO)</label>
                 <input
-                  value={header.logoAlt}
-                  onChange={(event) => setHeader((current) => ({ ...current, logoAlt: event.target.value }))}
-                  onBlur={() => patchHeader({ logoAlt: header.logoAlt })}
+                  value={draft.logoAlt}
+                  onChange={(event) => setDraft((current) => ({ ...current, logoAlt: event.target.value }))}
                   className="w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white"
                 />
               </div>
@@ -169,6 +361,7 @@ export function AdminHeaderCmsEditor() {
                   <tr>
                     <th className="px-3 py-2 font-medium">ชื่อเมนู</th>
                     <th className="px-3 py-2 font-medium">ลิงก์</th>
+                    <th className="px-3 py-2 font-medium">Mega</th>
                     <th className="px-3 py-2 font-medium">สถานะ</th>
                     <th className="px-3 py-2 font-medium">จัดการ</th>
                   </tr>
@@ -176,7 +369,7 @@ export function AdminHeaderCmsEditor() {
                 <tbody>
                   {sortedMenuItems.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-3 py-8 text-center text-slate-500">
+                      <td colSpan={5} className="px-3 py-8 text-center text-slate-500">
                         ยังไม่มีเมนู
                       </td>
                     </tr>
@@ -186,14 +379,26 @@ export function AdminHeaderCmsEditor() {
                         <td className="px-3 py-3 font-medium text-white">{item.label}</td>
                         <td className="px-3 py-3 font-mono text-slate-300">{item.href}</td>
                         <td className="px-3 py-3">
+                          {item.megaMenu?.enabled ? (
+                            <span className="rounded-full bg-violet-500/20 px-2 py-0.5 text-xs text-violet-300">
+                              เปิด ({item.megaMenu.columns.length} คอลัมน์)
+                            </span>
+                          ) : item.megaMenu ? (
+                            <span className="rounded-full bg-slate-700 px-2 py-0.5 text-xs text-slate-400">ปิด</span>
+                          ) : (
+                            <span className="text-xs text-slate-500">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3">
                           <button
                             type="button"
                             onClick={() =>
-                              patchHeader({
-                                menuItems: header.menuItems.map((entry) =>
+                              setDraft((current) => ({
+                                ...current,
+                                menuItems: current.menuItems.map((entry) =>
                                   entry.id === item.id ? { ...entry, enabled: !entry.enabled } : entry,
                                 ),
-                              })
+                              }))
                             }
                             className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                               item.enabled
@@ -205,7 +410,7 @@ export function AdminHeaderCmsEditor() {
                           </button>
                         </td>
                         <td className="px-3 py-3">
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-2">
                             <button
                               type="button"
                               disabled={index === 0}
@@ -234,6 +439,13 @@ export function AdminHeaderCmsEditor() {
                             </button>
                             <button
                               type="button"
+                              onClick={() => (item.megaMenu ? enableMegaMenu(item) : createMegaMenu(item))}
+                              className="rounded-md border border-violet-700 px-2 py-1 text-xs text-violet-200 hover:bg-violet-950"
+                            >
+                              Mega
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => deleteMenuItem(item.id)}
                               className="flex items-center gap-1 rounded-md bg-rose-600 px-2.5 py-1.5 text-xs text-white hover:bg-rose-500"
                             >
@@ -256,12 +468,26 @@ export function AdminHeaderCmsEditor() {
       <AdminHeaderMenuFormModal
         open={menuFormOpen}
         item={editingMenu}
-        nextSortOrder={header.menuItems.length}
+        nextSortOrder={draft.menuItems.length}
         onClose={() => {
           setMenuFormOpen(false);
           setEditingMenu(null);
         }}
         onSave={saveMenuItem}
+      />
+
+      <AdminHeaderMegaMenuModal
+        open={megaFormOpen}
+        menuLabel={editingMegaMenu?.label ?? "Menu"}
+        value={editingMegaMenu?.megaMenu ?? null}
+        onClose={() => {
+          setMegaFormOpen(false);
+          setEditingMegaMenu(null);
+        }}
+        onSave={(megaMenu) => {
+          if (!editingMegaMenu) return;
+          saveMegaMenu(editingMegaMenu.id, megaMenu);
+        }}
       />
     </>
   );

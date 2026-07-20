@@ -9,10 +9,13 @@ import { useCompare } from "@/components/shop/compare/CompareProvider";
 import { useWishlist } from "@/components/shop/wishlist/WishlistProvider";
 import { formatBaht } from "@/lib/pricing/vat";
 import { apiFetch } from "@/lib/api/client";
-import { defaultHeaderCms, getVisibleMenuItems, type HeaderCmsState } from "@/lib/cms/headerCms";
+import { defaultHeaderCms, type HeaderCmsState } from "@/lib/cms/headerCms";
 import { resolveProductImage } from "@/lib/api/products";
 import { MEMBER_TOKEN_KEY, deleteCookie, getCookie, setCookie } from "@/lib/auth/cookies";
 import { HeaderSearch } from "@/components/shop/HeaderSearch";
+import { HeaderTopbar } from "@/components/shop/HeaderTopbar";
+import { HeaderNavMenu } from "@/components/shop/HeaderNavMenu";
+import { HeaderMobileNav } from "@/components/shop/HeaderMobileNav";
 
 type MemberSession = {
   name: string;
@@ -131,7 +134,8 @@ export function Header({ initialCms = defaultHeaderCms }: HeaderProps) {
 
   return (
     <>
-      <header className="tp-header-area tp-header-style-darkRed tp-header-height">
+      <header className="tp-header-area tp-header-style-darkRed tp-header-height position-relative" style={{ zIndex: 100 }}>
+        <HeaderTopbar config={headerCms.topbar} />
         <div
           id="header-sticky"
           className={`tp-header-bottom-2 tp-header-sticky ${isSticky ? "header-sticky" : ""}`}
@@ -145,24 +149,18 @@ export function Header({ initialCms = defaultHeaderCms }: HeaderProps) {
                   </Link>
                 </div>
               </div>
-              <div className="col-xl-7 d-none d-xl-block">
+              <div className="col-xl-4 d-none d-xl-block">
                 <div className="main-menu menu-style-2">
-                  <nav className="tp-main-menu-content">
-                    <ul>
-                      {getVisibleMenuItems(headerCms).map((item) => (
-                        <li key={item.id}>
-                          <Link href={item.href}>{item.label}</Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </nav>
+                  <HeaderNavMenu headerCms={headerCms} />
                 </div>
               </div>
-              <div className="col-xl-3 col-lg-10 col-md-6 col-6">
+              <div className="col-xl-4 d-none d-xl-flex align-items-center">
+                <Suspense fallback={null}>
+                  <HeaderSearch />
+                </Suspense>
+              </div>
+              <div className="col-xl-2 col-lg-10 col-md-6 col-6">
                 <div className="d-flex align-items-center justify-content-end">
-                  <Suspense fallback={null}>
-                    <HeaderSearch />
-                  </Suspense>
                   <div className="tp-header-login d-none d-lg-block" style={{ position: "relative" }} ref={accountMenuRef}>
                     <button
                       type="button"
@@ -634,19 +632,7 @@ export function Header({ initialCms = defaultHeaderCms }: HeaderProps) {
               </div>
             </div>
 
-            <div className="tp-main-menu-mobile">
-              <nav>
-                <ul>
-                  {getVisibleMenuItems(headerCms).map((item) => (
-                    <li key={item.id}>
-                      <Link href={item.href} onClick={() => setIsMobileMenuOpen(false)}>
-                        {item.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-            </div>
+            <HeaderMobileNav headerCms={headerCms} onNavigate={() => setIsMobileMenuOpen(false)} />
 
             <div className="offcanvas__btn mt-30 d-lg-none">
               {member ? (

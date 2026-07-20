@@ -38,14 +38,7 @@ function SearchField({
               padding: "10px 12px",
               fontSize: 16,
             }
-          : {
-              width: "100%",
-              minHeight: 40,
-              border: "1px solid #e5e7eb",
-              borderRadius: 999,
-              padding: "8px 40px 8px 14px",
-              background: "#fff",
-            }
+          : undefined
       }
     />
   );
@@ -181,39 +174,14 @@ export function HeaderSearch({ compact = false }: HeaderSearchProps) {
   }
 
   return (
-    <form
-      onSubmit={submit}
-      role="search"
-      className="d-none d-xl-flex align-items-center"
-      style={{ marginRight: 12, maxWidth: 260, flex: "1 1 auto" }}
-    >
-      <div style={{ position: "relative", width: "100%" }}>
-        <SearchField q={q} setQ={setQ} />
-        <button
-          type="submit"
-          aria-label="ค้นหา"
-          style={{
-            position: "absolute",
-            right: 6,
-            top: "50%",
-            transform: "translateY(-50%)",
-            width: 32,
-            height: 32,
-            border: 0,
-            borderRadius: "50%",
-            background: "transparent",
-            color: "#0f172a",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.5" />
-            <path d="M20 20L16.5 16.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-        </button>
-      </div>
+    <form onSubmit={submit} role="search" className="tp-header-search-2 d-none d-xl-block" style={{ width: "100%" }}>
+      <SearchField q={q} setQ={setQ} />
+      <button type="submit" aria-label="ค้นหา">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.5" />
+          <path d="M20 20L16.5 16.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      </button>
     </form>
   );
 }

@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api/client";
-import { defaultHeaderCms, type HeaderCmsState } from "@/lib/cms/headerCms";
+import { defaultHeaderCms, normalizeHeaderCms, type HeaderCmsState } from "@/lib/cms/headerCms";
 
 export async function fetchHeaderCms(): Promise<HeaderCmsState> {
   try {
@@ -24,14 +24,4 @@ export async function saveAdminHeaderCms(state: HeaderCmsState, token: string) {
     body: JSON.stringify(state),
   });
   return normalizeHeaderCms(res.data);
-}
-
-function normalizeHeaderCms(data: HeaderCmsState | undefined): HeaderCmsState {
-  if (!data) return defaultHeaderCms;
-
-  return {
-    logoUrl: data.logoUrl || defaultHeaderCms.logoUrl,
-    logoAlt: data.logoAlt || defaultHeaderCms.logoAlt,
-    menuItems: data.menuItems?.length ? data.menuItems : defaultHeaderCms.menuItems,
-  };
 }

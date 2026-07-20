@@ -17,6 +17,7 @@ const emptyItem = (sortOrder: number): HeaderMenuItem => ({
   href: "/",
   sortOrder,
   enabled: true,
+  megaMenu: null,
 });
 
 export function AdminHeaderMenuFormModal({
@@ -84,12 +85,17 @@ export function AdminHeaderMenuFormModal({
             />
             แสดงบนหน้าร้าน
           </label>
+          {form.megaMenu ? (
+            <p className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 text-xs text-slate-400">
+              Mega Menu: {form.megaMenu.enabled ? "เปิดใช้งาน" : "ปิด"} — แก้ไขได้จากปุ่ม Mega ในตาราง
+            </p>
+          ) : null}
 
           <button
             type="submit"
             className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-500"
           >
-            {item ? "บันทึกการแก้ไข" : "เพิ่มเมนู"}
+            {item ? "ใช้การแก้ไขเมนู" : "เพิ่มเมนู"}
           </button>
         </form>
       </div>
