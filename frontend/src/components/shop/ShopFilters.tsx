@@ -47,7 +47,10 @@ export function ShopFilters({ categories, query, total }: ShopFiltersProps) {
   return (
     <div className="mb-40">
       <form onSubmit={onSubmit} className="mb-25" role="search">
-        <div className="d-flex flex-wrap gap-2 align-items-stretch">
+        <div
+          className="d-flex flex-wrap gap-2 align-items-stretch"
+          style={{ width: "100%" }}
+        >
           <input
             type="search"
             name="q"
@@ -57,18 +60,25 @@ export function ShopFilters({ categories, query, total }: ShopFiltersProps) {
             aria-label="ค้นหาสินค้า"
             className="form-control"
             style={{
-              flex: "1 1 240px",
+              flex: "1 1 0",
+              width: "100%",
+              minWidth: 0,
               minHeight: 48,
               borderRadius: 8,
               border: "1px solid #e5e7eb",
               padding: "10px 14px",
+              fontSize: 16,
             }}
           />
-          <button type="submit" className="tp-btn" style={{ minHeight: 48, whiteSpace: "nowrap" }}>
+          <button type="submit" className="tp-btn w-100 w-sm-auto" style={{ minHeight: 48, whiteSpace: "nowrap" }}>
             ค้นหา
           </button>
           {query.q || query.category ? (
-            <Link href="/shop" className="tp-btn tp-btn-border" style={{ minHeight: 48, display: "inline-flex", alignItems: "center" }}>
+            <Link
+              href="/shop"
+              className="tp-btn tp-btn-border w-100 w-sm-auto"
+              style={{ minHeight: 48, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+            >
               ล้างตัวกรอง
             </Link>
           ) : null}

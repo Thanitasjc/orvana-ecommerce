@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState, type RefObject } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type HeaderSearchProps = {
@@ -8,12 +8,56 @@ type HeaderSearchProps = {
   compact?: boolean;
 };
 
+function SearchField({
+  q,
+  setQ,
+  inputRef,
+  compactInput,
+}: {
+  q: string;
+  setQ: (value: string) => void;
+  inputRef?: RefObject<HTMLInputElement | null>;
+  compactInput?: boolean;
+}) {
+  return (
+    <input
+      ref={inputRef}
+      type="search"
+      value={q}
+      onChange={(event) => setQ(event.target.value)}
+      placeholder="ค้นหาสินค้า..."
+      aria-label="ค้นหาสินค้า"
+      style={
+        compactInput
+          ? {
+              flex: 1,
+              minWidth: 0,
+              width: "100%",
+              border: "1px solid #e5e7eb",
+              borderRadius: 8,
+              padding: "10px 12px",
+              fontSize: 16,
+            }
+          : {
+              width: "100%",
+              minHeight: 40,
+              border: "1px solid #e5e7eb",
+              borderRadius: 999,
+              padding: "8px 40px 8px 14px",
+              background: "#fff",
+            }
+      }
+    />
+  );
+}
+
 export function HeaderSearch({ compact = false }: HeaderSearchProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
+  const [barTop, setBarTop] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
@@ -26,12 +70,39 @@ export function HeaderSearch({ compact = false }: HeaderSearchProps) {
   useEffect(() => {
     if (!open) return;
     inputRef.current?.focus();
-    const onPointerDown = (event: MouseEvent) => {
-      if (!wrapRef.current?.contains(event.target as Node)) setOpen(false);
+
+    const updateBarTop = () => {
+      const header = document.getElementById("header-sticky");
+      setBarTop(header ? header.getBoundingClientRect().bottom : 0);
     };
+
+    updateBarTop();
+    window.addEventListener("resize", updateBarTop);
+    window.addEventListener("scroll", updateBarTop, { passive: true });
+
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (wrapRef.current?.contains(target)) return;
+      if ((target as HTMLElement).closest?.("[data-mobile-search-bar]")) return;
+      setOpen(false);
+    };
+
     window.addEventListener("mousedown", onPointerDown);
-    return () => window.removeEventListener("mousedown", onPointerDown);
+    return () => {
+      window.removeEventListener("resize", updateBarTop);
+      window.removeEventListener("scroll", updateBarTop);
+      window.removeEventListener("mousedown", onPointerDown);
+    };
   }, [open]);
+
+  useEffect(() => {
+    if (!compact || !open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [compact, open]);
 
   function submit(event?: FormEvent) {
     event?.preventDefault();
@@ -43,58 +114,69 @@ export function HeaderSearch({ compact = false }: HeaderSearchProps) {
 
   if (compact) {
     return (
-      <div className="tp-header-action-item" ref={wrapRef} style={{ position: "relative" }}>
-        <button
-          type="button"
-          className="tp-header-action-btn"
-          aria-label="ค้นหาสินค้า"
-          aria-expanded={open}
-          onClick={() => setOpen((prev) => !prev)}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.5" />
-            <path d="M20 20L16.5 16.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-        </button>
-        {open ? (
-          <form
-            onSubmit={submit}
-            style={{
-              position: "absolute",
-              right: 0,
-              top: "calc(100% + 10px)",
-              zIndex: 80,
-              width: "min(86vw, 320px)",
-              display: "flex",
-              gap: 8,
-              padding: 10,
-              background: "#fff",
-              border: "1px solid #ececec",
-              borderRadius: 10,
-              boxShadow: "0 12px 28px rgba(15,23,42,0.12)",
-            }}
+      <>
+        <div className="tp-header-action-item" ref={wrapRef}>
+          <button
+            type="button"
+            className="tp-header-action-btn"
+            aria-label="ค้นหาสินค้า"
+            aria-expanded={open}
+            onClick={() => setOpen((prev) => !prev)}
           >
-            <input
-              ref={inputRef}
-              type="search"
-              value={q}
-              onChange={(event) => setQ(event.target.value)}
-              placeholder="ค้นหาสินค้า..."
-              aria-label="ค้นหาสินค้า"
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M20 20L16.5 16.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        {open ? (
+          <>
+            <button
+              type="button"
+              aria-label="ปิดการค้นหา"
+              onClick={() => setOpen(false)}
               style={{
-                flex: 1,
-                minWidth: 0,
-                border: "1px solid #e5e7eb",
-                borderRadius: 8,
-                padding: "8px 10px",
+                position: "fixed",
+                inset: 0,
+                zIndex: 9998,
+                border: 0,
+                padding: 0,
+                background: "rgba(15, 23, 42, 0.35)",
               }}
             />
-            <button type="submit" className="tp-btn" style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
-              ค้นหา
-            </button>
-          </form>
+            <form
+              data-mobile-search-bar
+              onSubmit={submit}
+              style={{
+                position: "fixed",
+                left: 0,
+                right: 0,
+                width: "100%",
+                top: barTop,
+                zIndex: 9999,
+                display: "flex",
+                gap: 8,
+                alignItems: "stretch",
+                padding: "12px 16px",
+                boxSizing: "border-box",
+                background: "#fff",
+                borderBottom: "1px solid #ececec",
+                boxShadow: "0 8px 24px rgba(15, 23, 42, 0.08)",
+              }}
+            >
+              <SearchField q={q} setQ={setQ} inputRef={inputRef} compactInput />
+              <button
+                type="submit"
+                className="tp-btn"
+                style={{ flexShrink: 0, padding: "10px 16px", whiteSpace: "nowrap", minHeight: 44 }}
+              >
+                ค้นหา
+              </button>
+            </form>
+          </>
         ) : null}
-      </div>
+      </>
     );
   }
 
@@ -106,21 +188,7 @@ export function HeaderSearch({ compact = false }: HeaderSearchProps) {
       style={{ marginRight: 12, maxWidth: 260, flex: "1 1 auto" }}
     >
       <div style={{ position: "relative", width: "100%" }}>
-        <input
-          type="search"
-          value={q}
-          onChange={(event) => setQ(event.target.value)}
-          placeholder="ค้นหาสินค้า..."
-          aria-label="ค้นหาสินค้า"
-          style={{
-            width: "100%",
-            minHeight: 40,
-            border: "1px solid #e5e7eb",
-            borderRadius: 999,
-            padding: "8px 40px 8px 14px",
-            background: "#fff",
-          }}
-        />
+        <SearchField q={q} setQ={setQ} />
         <button
           type="submit"
           aria-label="ค้นหา"
