@@ -161,7 +161,7 @@ class HeaderCmsService
     {
         $links = $topbar['socialLinks'] ?? null;
 
-        if (! is_array($links) || count($links) === 0) {
+        if (! is_array($links)) {
             if (filled($topbar['facebookUrl'] ?? null)) {
                 return [[
                     'id' => 'social-facebook',

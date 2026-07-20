@@ -282,7 +282,7 @@ function normalizeMenuItem(item: HeaderMenuItem, index: number): HeaderMenuItem 
 function normalizeSocialLinks(
   topbar: HeaderTopbarConfig | (Partial<HeaderTopbarConfig> & { facebookUrl?: string; facebookFollowers?: string }) | undefined,
 ): HeaderTopbarSocialLink[] {
-  if (Array.isArray(topbar?.socialLinks) && topbar.socialLinks.length) {
+  if (Array.isArray(topbar?.socialLinks)) {
     return topbar.socialLinks.map((link, index) => ({
       id: link.id || `social-${index}`,
       platform: link.platform || "custom",

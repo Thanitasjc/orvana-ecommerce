@@ -6,6 +6,7 @@ import { AdminProductImagePicker } from "@/components/admin/AdminProductImagePic
 import { AdminHeaderMenuFormModal } from "@/components/admin/cms/AdminHeaderMenuFormModal";
 import { AdminHeaderMegaMenuModal } from "@/components/admin/cms/AdminHeaderMegaMenuModal";
 import { fetchAdminHeaderCms, saveAdminHeaderCms } from "@/lib/api/headerCms";
+import type { ApiError } from "@/lib/api/client";
 import { newId } from "@/lib/cms/homepageCms";
 import {
   defaultHeaderCms,
@@ -50,6 +51,11 @@ export function AdminHeaderCmsEditor() {
   const sortedMenuItems = useMemo(
     () => [...draft.menuItems].sort((a, b) => a.sortOrder - b.sortOrder),
     [draft.menuItems],
+  );
+
+  const sortedSocialLinks = useMemo(
+    () => [...(draft.topbar.socialLinks ?? [])].sort((a, b) => a.sortOrder - b.sortOrder),
+    [draft.topbar.socialLinks],
   );
 
   const showMessage = useCallback((text: string) => {
@@ -101,8 +107,12 @@ export function AdminHeaderCmsEditor() {
       setDraft(saved);
       setBaseline(saved);
       showMessage("บันทึก Header แล้ว");
-    } catch {
-      setLoadError("บันทึก Header ไม่สำเร็จ");
+    } catch (error) {
+      const apiError = error as ApiError;
+      const detail = apiError.errors
+        ? Object.values(apiError.errors).flat().join(", ")
+        : apiError.message;
+      setLoadError(detail ? `บันทึก Header ไม่สำเร็จ: ${detail}` : "บันทึก Header ไม่สำเร็จ");
     } finally {
       setSaving(false);
     }
@@ -140,44 +150,59 @@ export function AdminHeaderCmsEditor() {
 
   function addSocialLink(platform: HeaderTopbarSocialPlatform = "facebook") {
     const preset = TOPBAR_SOCIAL_PLATFORM_PRESETS[platform];
-    updateTopbar({
-      socialLinks: [
-        ...draft.topbar.socialLinks,
-        {
-          id: newId("social"),
-          platform,
-          label: preset.label,
-          url: "",
-          iconClass: preset.iconClass,
-          imageUrl: "",
-          sortOrder: draft.topbar.socialLinks.length,
-          enabled: true,
+    setDraft((current) => {
+      const socialLinks = current.topbar.socialLinks ?? [];
+      return {
+        ...current,
+        topbar: {
+          ...current.topbar,
+          socialLinks: [
+            ...socialLinks,
+            {
+              id: newId("social"),
+              platform,
+              label: preset.label,
+              url: "",
+              iconClass: preset.iconClass,
+              imageUrl: "",
+              sortOrder: socialLinks.length,
+              enabled: true,
+            },
+          ],
         },
-      ],
+      };
     });
   }
 
-  function updateSocialLink(index: number, patch: Partial<HeaderTopbarSocialLink>) {
-    updateTopbar({
-      socialLinks: draft.topbar.socialLinks.map((link, linkIndex) => {
-        if (linkIndex !== index) return link;
-        const next = { ...link, ...patch };
-        if (patch.platform && patch.platform !== link.platform) {
-          const preset = TOPBAR_SOCIAL_PLATFORM_PRESETS[patch.platform];
-          next.label = preset.label;
-          next.iconClass = preset.iconClass;
-        }
-        return next;
-      }),
-    });
+  function updateSocialLink(linkId: string, patch: Partial<HeaderTopbarSocialLink>) {
+    setDraft((current) => ({
+      ...current,
+      topbar: {
+        ...current.topbar,
+        socialLinks: (current.topbar.socialLinks ?? []).map((link) => {
+          if (link.id !== linkId) return link;
+          const next = { ...link, ...patch };
+          if (patch.platform && patch.platform !== link.platform) {
+            const preset = TOPBAR_SOCIAL_PLATFORM_PRESETS[patch.platform];
+            next.label = preset.label;
+            next.iconClass = preset.iconClass;
+          }
+          return next;
+        }),
+      },
+    }));
   }
 
-  function deleteSocialLink(index: number) {
-    updateTopbar({
-      socialLinks: draft.topbar.socialLinks
-        .filter((_, linkIndex) => linkIndex !== index)
-        .map((link, sortOrder) => ({ ...link, sortOrder })),
-    });
+  function deleteSocialLink(linkId: string) {
+    setDraft((current) => ({
+      ...current,
+      topbar: {
+        ...current.topbar,
+        socialLinks: (current.topbar.socialLinks ?? [])
+          .filter((link) => link.id !== linkId)
+          .map((link, sortOrder) => ({ ...link, sortOrder })),
+      },
+    }));
   }
 
   function saveMenuItem(item: HeaderMenuItem) {
@@ -336,18 +361,18 @@ export function AdminHeaderCmsEditor() {
                   </div>
                 </div>
                 <div className="space-y-3">
-                  {draft.topbar.socialLinks.length === 0 ? (
+                  {sortedSocialLinks.length === 0 ? (
                     <p className="rounded-xl border border-dashed border-slate-700 px-4 py-6 text-center text-sm text-slate-500">
                       ยังไม่มีลิงก์โซเชียล
                     </p>
                   ) : (
-                    draft.topbar.socialLinks.map((link, index) => (
+                    sortedSocialLinks.map((link) => (
                       <div key={link.id} className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
                         <div className="mb-3 grid gap-2 md:grid-cols-[140px_1fr_1fr_auto]">
                           <select
                             value={link.platform}
                             onChange={(event) =>
-                              updateSocialLink(index, { platform: event.target.value as HeaderTopbarSocialPlatform })
+                              updateSocialLink(link.id, { platform: event.target.value as HeaderTopbarSocialPlatform })
                             }
                             className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white"
                           >
@@ -361,13 +386,13 @@ export function AdminHeaderCmsEditor() {
                           </select>
                           <input
                             value={link.label}
-                            onChange={(event) => updateSocialLink(index, { label: event.target.value })}
+                            onChange={(event) => updateSocialLink(link.id, { label: event.target.value })}
                             className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white"
                             placeholder="ชื่อ (aria-label)"
                           />
                           <input
                             value={link.url}
-                            onChange={(event) => updateSocialLink(index, { url: event.target.value })}
+                            onChange={(event) => updateSocialLink(link.id, { url: event.target.value })}
                             className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white"
                             placeholder="https://..."
                           />
@@ -375,7 +400,7 @@ export function AdminHeaderCmsEditor() {
                             <input
                               type="checkbox"
                               checked={link.enabled}
-                              onChange={(event) => updateSocialLink(index, { enabled: event.target.checked })}
+                              onChange={(event) => updateSocialLink(link.id, { enabled: event.target.checked })}
                             />
                             แสดง
                           </label>
@@ -385,7 +410,7 @@ export function AdminHeaderCmsEditor() {
                             <label className="mb-1 block text-xs font-semibold text-slate-400">Icon class (Font Awesome)</label>
                             <input
                               value={link.iconClass}
-                              onChange={(event) => updateSocialLink(index, { iconClass: event.target.value })}
+                              onChange={(event) => updateSocialLink(link.id, { iconClass: event.target.value })}
                               className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white"
                               placeholder="fa-brands fa-facebook-f"
                             />
@@ -393,16 +418,18 @@ export function AdminHeaderCmsEditor() {
                         ) : null}
                         <div className="mb-3">
                           <label className="mb-1 block text-xs font-semibold text-slate-400">
-                            รูปไอคอน (ถ้ามี จะใช้แทน Font Awesome)
+                            รูปไอคอน (path — ถ้ามี จะใช้แทน Font Awesome)
                           </label>
-                          <AdminProductImagePicker
+                          <input
                             value={link.imageUrl}
-                            onChange={(imageUrl) => updateSocialLink(index, { imageUrl })}
+                            onChange={(event) => updateSocialLink(link.id, { imageUrl: event.target.value })}
+                            className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white"
+                            placeholder="/assets/img/..."
                           />
                         </div>
                         <button
                           type="button"
-                          onClick={() => deleteSocialLink(index)}
+                          onClick={() => deleteSocialLink(link.id)}
                           className="flex items-center gap-1 rounded-md bg-rose-600 px-2.5 py-1.5 text-xs text-white hover:bg-rose-500"
                         >
                           <TrashIcon />
