@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, Suspense, useEffect, useRef, useState } from "react";
 import { useCart } from "@/components/shop/cart/CartProvider";
 import { useCompare } from "@/components/shop/compare/CompareProvider";
 import { useWishlist } from "@/components/shop/wishlist/WishlistProvider";
@@ -12,6 +12,7 @@ import { apiFetch } from "@/lib/api/client";
 import { defaultHeaderCms, getVisibleMenuItems, type HeaderCmsState } from "@/lib/cms/headerCms";
 import { resolveProductImage } from "@/lib/api/products";
 import { MEMBER_TOKEN_KEY, deleteCookie, getCookie, setCookie } from "@/lib/auth/cookies";
+import { HeaderSearch } from "@/components/shop/HeaderSearch";
 
 type MemberSession = {
   name: string;
@@ -159,6 +160,9 @@ export function Header({ initialCms = defaultHeaderCms }: HeaderProps) {
               </div>
               <div className="col-xl-3 col-lg-10 col-md-6 col-6">
                 <div className="d-flex align-items-center justify-content-end">
+                  <Suspense fallback={null}>
+                    <HeaderSearch />
+                  </Suspense>
                   <div className="tp-header-login d-none d-lg-block" style={{ position: "relative" }} ref={accountMenuRef}>
                     <button
                       type="button"
@@ -266,6 +270,11 @@ export function Header({ initialCms = defaultHeaderCms }: HeaderProps) {
                   </div>
 
                   <div className="tp-header-action d-flex align-items-center ml-30">
+                    <div className="d-xl-none">
+                      <Suspense fallback={null}>
+                        <HeaderSearch compact />
+                      </Suspense>
+                    </div>
                     <div className="tp-header-action-item">
                       <Link href="/compare" className="tp-header-action-btn" aria-label="Compare products">
                         <svg width="20" height="19" viewBox="0 0 20 19" fill="none" xmlns="http://www.w3.org/2000/svg">

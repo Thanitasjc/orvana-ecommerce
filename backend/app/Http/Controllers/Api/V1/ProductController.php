@@ -11,7 +11,7 @@ class ProductController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Product::with(['category', 'variations'])->orderByDesc('sales_count');
+        $query = Product::with(['category', 'variations']);
 
         if ($request->filled('category')) {
             $query->whereHas('category', fn ($q) => $q->where('slug', $request->string('category')));
@@ -23,8 +23,21 @@ class ProductController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->string('search');
-            $query->where('name', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhere('slug', 'like', "%{$search}%");
+            });
         }
+
+        $sort = $request->string('sort')->toString() ?: 'popular';
+        match ($sort) {
+            'price_asc' => $query->orderBy('price')->orderBy('id'),
+            'price_desc' => $query->orderByDesc('price')->orderBy('id'),
+            'newest' => $query->orderByDesc('id'),
+            'name' => $query->orderBy('name'),
+            default => $query->orderByDesc('sales_count')->orderByDesc('id'),
+        };
 
         $products = $query->paginate(12);
 

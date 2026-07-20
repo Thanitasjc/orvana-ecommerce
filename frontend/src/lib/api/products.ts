@@ -240,19 +240,63 @@ export async function getRelatedProducts(
   return products.filter((product) => product.slug !== currentSlug).slice(0, limit);
 }
 
-export async function getProducts(params?: {
+export type StorefrontProductQuery = {
   featured?: boolean;
   category?: string;
-}): Promise<ApiProduct[]> {
+  search?: string;
+  sort?: "popular" | "newest" | "price_asc" | "price_desc" | "name";
+  page?: number;
+};
+
+export type StorefrontProductsPage = {
+  data: ApiProduct[];
+  current_page: number;
+  last_page: number;
+  total: number;
+};
+
+export async function getProductsPage(params?: StorefrontProductQuery): Promise<StorefrontProductsPage> {
+  const empty: StorefrontProductsPage = { data: [], current_page: 1, last_page: 1, total: 0 };
   try {
     const searchParams = new URLSearchParams();
     if (params?.featured) searchParams.set("featured", "1");
     if (params?.category) searchParams.set("category", params.category);
+    if (params?.search) searchParams.set("search", params.search);
+    if (params?.sort) searchParams.set("sort", params.sort);
+    if (params?.page && params.page > 1) searchParams.set("page", String(params.page));
 
     const query = searchParams.toString();
     const res = await fetch(`${API_URL}/products${query ? `?${query}` : ""}`, {
-      next: { revalidate: 60 },
+      next: { revalidate: 30 },
     });
+    if (!res.ok) return empty;
+    const json = await res.json();
+    return {
+      data: json.data ?? [],
+      current_page: Number(json.current_page) || 1,
+      last_page: Number(json.last_page) || 1,
+      total: Number(json.total) || 0,
+    };
+  } catch {
+    return empty;
+  }
+}
+
+export async function getProducts(params?: StorefrontProductQuery): Promise<ApiProduct[]> {
+  const page = await getProductsPage(params);
+  return page.data;
+}
+
+export type StorefrontCategory = {
+  id: number;
+  name: string;
+  slug: string;
+  products_count?: number;
+};
+
+export async function getStorefrontCategories(): Promise<StorefrontCategory[]> {
+  try {
+    const res = await fetch(`${API_URL}/categories`, { next: { revalidate: 60 } });
     if (!res.ok) return [];
     const json = await res.json();
     return json.data ?? [];
