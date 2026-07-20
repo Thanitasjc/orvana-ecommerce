@@ -1,0 +1,33 @@
+{
+  "name": "AESTHETE Fashion — Omnichannel",
+  "short_name": "AESTHETE",
+  "description": "ร้านแฟชั่น Omnichannel: ออนไลน์ + POS + Admin",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "lang": "th",
+  "categories": ["shopping", "lifestyle"],
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
