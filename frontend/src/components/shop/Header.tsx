@@ -266,7 +266,7 @@ export function Header({ initialCms = defaultHeaderCms }: HeaderProps) {
                   </div>
 
                   <div className="tp-header-action d-flex align-items-center ml-30">
-                    <div className="tp-header-action-item d-none d-lg-block">
+                    <div className="tp-header-action-item">
                       <Link href="/compare" className="tp-header-action-btn" aria-label="Compare products">
                         <svg width="20" height="19" viewBox="0 0 20 19" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path
@@ -301,7 +301,7 @@ export function Header({ initialCms = defaultHeaderCms }: HeaderProps) {
                         {compareCount > 0 ? <span className="tp-header-action-badge">{compareCount}</span> : null}
                       </Link>
                     </div>
-                    <div className="tp-header-action-item d-none d-lg-block">
+                    <div className="tp-header-action-item">
                       <Link href="/wishlist" className="tp-header-action-btn" aria-label="Wishlist">
                         <svg width="22" height="20" viewBox="0 0 22 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path
