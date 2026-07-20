@@ -27,6 +27,7 @@ export function Header({ initialCms = defaultHeaderCms }: HeaderProps) {
   const router = useRouter();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSticky, setIsSticky] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -41,11 +42,11 @@ export function Header({ initialCms = defaultHeaderCms }: HeaderProps) {
   const shippingProgress = Math.min(100, Math.round((subtotal / freeShippingTarget) * 100));
 
   useEffect(() => {
-    document.body.style.overflow = isCartOpen || isLoginModalOpen ? "hidden" : "";
+    document.body.style.overflow = isCartOpen || isLoginModalOpen || isMobileMenuOpen ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isCartOpen, isLoginModalOpen]);
+  }, [isCartOpen, isLoginModalOpen, isMobileMenuOpen]);
 
   useEffect(() => {
     const onScroll = () => {
@@ -324,52 +325,67 @@ export function Header({ initialCms = defaultHeaderCms }: HeaderProps) {
                       </Link>
                     </div>
                     <div className="tp-header-action-item">
-                    <button
-                      className="tp-header-action-btn cartmini-open-btn"
-                      type="button"
-                      aria-label="Open cart"
-                      onClick={() => setIsCartOpen(true)}
-                    >
-                      <svg
-                        width="21"
-                        height="22"
-                        viewBox="0 0 21 22"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
+                      <button
+                        className="tp-header-action-btn cartmini-open-btn"
+                        type="button"
+                        aria-label="Open cart"
+                        onClick={() => setIsCartOpen(true)}
                       >
-                        <path
-                          fillRule="evenodd"
-                          clipRule="evenodd"
-                          d="M6.48626 20.5H14.8341C17.9004 20.5 20.2528 19.3924 19.5847 14.9348L18.8066 8.89359C18.3947 6.66934 16.976 5.81808 15.7311 5.81808H5.55262C4.28946 5.81808 2.95308 6.73341 2.4771 8.89359L1.69907 14.9348C1.13157 18.889 3.4199 20.5 6.48626 20.5Z"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <path
-                          d="M6.34902 5.5984C6.34902 3.21232 8.28331 1.27803 10.6694 1.27803V1.27803C11.8184 1.27316 12.922 1.72619 13.7362 2.53695C14.5504 3.3477 15.0081 4.44939 15.0081 5.5984V5.5984"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <path
-                          d="M7.70365 10.1018H7.74942"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <path
-                          d="M13.5343 10.1018H13.5801"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                      <span className="tp-header-action-badge">{cartCount}</span>
-                    </button>
+                        <svg
+                          width="21"
+                          height="22"
+                          viewBox="0 0 21 22"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            clipRule="evenodd"
+                            d="M6.48626 20.5H14.8341C17.9004 20.5 20.2528 19.3924 19.5847 14.9348L18.8066 8.89359C18.3947 6.66934 16.976 5.81808 15.7311 5.81808H5.55262C4.28946 5.81808 2.95308 6.73341 2.4771 8.89359L1.69907 14.9348C1.13157 18.889 3.4199 20.5 6.48626 20.5Z"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M6.34902 5.5984C6.34902 3.21232 8.28331 1.27803 10.6694 1.27803V1.27803C11.8184 1.27316 12.922 1.72619 13.7362 2.53695C14.5504 3.3477 15.0081 4.44939 15.0081 5.5984V5.5984"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M7.70365 10.1018H7.74942"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M13.5343 10.1018H13.5801"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        <span className="tp-header-action-badge">{cartCount}</span>
+                      </button>
+                    </div>
+                    <div className="tp-header-action-item d-xl-none">
+                      <button
+                        type="button"
+                        className="tp-header-action-btn tp-offcanvas-open-btn"
+                        aria-label="Open menu"
+                        aria-expanded={isMobileMenuOpen}
+                        onClick={() => setIsMobileMenuOpen(true)}
+                      >
+                        <svg width="22" height="16" viewBox="0 0 22 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                          <path d="M0 1H22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                          <path d="M0 8H22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                          <path d="M0 15H22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                        </svg>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -577,6 +593,95 @@ export function Header({ initialCms = defaultHeaderCms }: HeaderProps) {
         <div
           onClick={() => setIsCartOpen(false)}
           style={{ position: "fixed", inset: 0, zIndex: 1090, backgroundColor: "rgba(0, 0, 0, 0.45)" }}
+          aria-hidden="true"
+        />
+      ) : null}
+
+      <div
+        className={`offcanvas__area offcanvas__style-darkRed ${isMobileMenuOpen ? "offcanvas-opened" : ""}`}
+        aria-hidden={!isMobileMenuOpen}
+      >
+        <div className="offcanvas__wrapper">
+          <div className="offcanvas__close">
+            <button
+              type="button"
+              className="offcanvas__close-btn offcanvas-close-btn"
+              aria-label="Close menu"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M11 1L1 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M1 1L11 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="offcanvas__content">
+            <div className="offcanvas__top mb-40">
+              <div className="offcanvas__logo">
+                <Link href="/" onClick={() => setIsMobileMenuOpen(false)}>
+                  <img src={resolveProductImage(headerCms.logoUrl)} alt={headerCms.logoAlt} />
+                </Link>
+              </div>
+            </div>
+
+            <div className="tp-main-menu-mobile">
+              <nav>
+                <ul>
+                  {getVisibleMenuItems(headerCms).map((item) => (
+                    <li key={item.id}>
+                      <Link href={item.href} onClick={() => setIsMobileMenuOpen(false)}>
+                        {item.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            </div>
+
+            <div className="offcanvas__btn mt-30 d-lg-none">
+              {member ? (
+                <div className="d-flex flex-column gap-2">
+                  <Link href="/account" className="tp-btn w-100" onClick={() => setIsMobileMenuOpen(false)}>
+                    My Profile
+                  </Link>
+                  <Link href="/wishlist" className="tp-btn tp-btn-border w-100" onClick={() => setIsMobileMenuOpen(false)}>
+                    Wishlist
+                  </Link>
+                  <button
+                    type="button"
+                    className="tp-btn tp-btn-border w-100"
+                    style={{ color: "#d32f2f" }}
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      onLogout();
+                    }}
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="tp-btn w-100"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setLoginError(null);
+                    setIsLoginModalOpen(true);
+                  }}
+                >
+                  เข้าสู่ระบบ
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {isMobileMenuOpen ? (
+        <div
+          className="body-overlay opened"
+          onClick={() => setIsMobileMenuOpen(false)}
           aria-hidden="true"
         />
       ) : null}
