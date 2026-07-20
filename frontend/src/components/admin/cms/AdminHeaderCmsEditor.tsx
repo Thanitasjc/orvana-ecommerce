@@ -10,10 +10,13 @@ import { newId } from "@/lib/cms/homepageCms";
 import {
   defaultHeaderCms,
   defaultShopMegaMenu,
+  TOPBAR_SOCIAL_PLATFORM_PRESETS,
   type HeaderCmsState,
   type HeaderMegaMenuConfig,
   type HeaderMenuItem,
   type HeaderTopbarLanguage,
+  type HeaderTopbarSocialLink,
+  type HeaderTopbarSocialPlatform,
 } from "@/lib/cms/headerCms";
 import { resolveProductImage } from "@/lib/api/products";
 import { getCookie, STAFF_TOKEN_KEY } from "@/lib/auth/cookies";
@@ -135,6 +138,48 @@ export function AdminHeaderCmsEditor() {
     updateTopbar({ languages, defaultLanguage });
   }
 
+  function addSocialLink(platform: HeaderTopbarSocialPlatform = "facebook") {
+    const preset = TOPBAR_SOCIAL_PLATFORM_PRESETS[platform];
+    updateTopbar({
+      socialLinks: [
+        ...draft.topbar.socialLinks,
+        {
+          id: newId("social"),
+          platform,
+          label: preset.label,
+          url: "",
+          iconClass: preset.iconClass,
+          imageUrl: "",
+          sortOrder: draft.topbar.socialLinks.length,
+          enabled: true,
+        },
+      ],
+    });
+  }
+
+  function updateSocialLink(index: number, patch: Partial<HeaderTopbarSocialLink>) {
+    updateTopbar({
+      socialLinks: draft.topbar.socialLinks.map((link, linkIndex) => {
+        if (linkIndex !== index) return link;
+        const next = { ...link, ...patch };
+        if (patch.platform && patch.platform !== link.platform) {
+          const preset = TOPBAR_SOCIAL_PLATFORM_PRESETS[patch.platform];
+          next.label = preset.label;
+          next.iconClass = preset.iconClass;
+        }
+        return next;
+      }),
+    });
+  }
+
+  function deleteSocialLink(index: number) {
+    updateTopbar({
+      socialLinks: draft.topbar.socialLinks
+        .filter((_, linkIndex) => linkIndex !== index)
+        .map((link, sortOrder) => ({ ...link, sortOrder })),
+    });
+  }
+
   function saveMenuItem(item: HeaderMenuItem) {
     const exists = draft.menuItems.some((entry) => entry.id === item.id);
     const menuItems = exists
@@ -249,22 +294,6 @@ export function AdminHeaderCmsEditor() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-xs font-semibold text-slate-400">Facebook URL</label>
-                  <input
-                    value={draft.topbar.facebookUrl}
-                    onChange={(event) => updateTopbar({ facebookUrl: event.target.value })}
-                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-slate-400">ข้อความผู้ติดตาม</label>
-                  <input
-                    value={draft.topbar.facebookFollowers}
-                    onChange={(event) => updateTopbar({ facebookFollowers: event.target.value })}
-                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white"
-                  />
-                </div>
-                <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-400">เบอร์โทร</label>
                   <input
                     value={draft.topbar.phone}
@@ -285,6 +314,103 @@ export function AdminHeaderCmsEditor() {
                       </option>
                     ))}
                   </select>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <h5 className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    โซเชียล (แสดงเป็นไอคอน)
+                  </h5>
+                  <div className="flex flex-wrap gap-2">
+                    {(Object.keys(TOPBAR_SOCIAL_PLATFORM_PRESETS) as HeaderTopbarSocialPlatform[]).map((platform) => (
+                      <button
+                        key={platform}
+                        type="button"
+                        onClick={() => addSocialLink(platform)}
+                        className="rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-200 hover:bg-slate-800"
+                      >
+                        + {TOPBAR_SOCIAL_PLATFORM_PRESETS[platform].label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {draft.topbar.socialLinks.length === 0 ? (
+                    <p className="rounded-xl border border-dashed border-slate-700 px-4 py-6 text-center text-sm text-slate-500">
+                      ยังไม่มีลิงก์โซเชียล
+                    </p>
+                  ) : (
+                    draft.topbar.socialLinks.map((link, index) => (
+                      <div key={link.id} className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                        <div className="mb-3 grid gap-2 md:grid-cols-[140px_1fr_1fr_auto]">
+                          <select
+                            value={link.platform}
+                            onChange={(event) =>
+                              updateSocialLink(index, { platform: event.target.value as HeaderTopbarSocialPlatform })
+                            }
+                            className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white"
+                          >
+                            {(Object.keys(TOPBAR_SOCIAL_PLATFORM_PRESETS) as HeaderTopbarSocialPlatform[]).map(
+                              (platform) => (
+                                <option key={platform} value={platform}>
+                                  {TOPBAR_SOCIAL_PLATFORM_PRESETS[platform].label}
+                                </option>
+                              ),
+                            )}
+                          </select>
+                          <input
+                            value={link.label}
+                            onChange={(event) => updateSocialLink(index, { label: event.target.value })}
+                            className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white"
+                            placeholder="ชื่อ (aria-label)"
+                          />
+                          <input
+                            value={link.url}
+                            onChange={(event) => updateSocialLink(index, { url: event.target.value })}
+                            className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white"
+                            placeholder="https://..."
+                          />
+                          <label className="flex items-center gap-2 text-xs text-slate-300">
+                            <input
+                              type="checkbox"
+                              checked={link.enabled}
+                              onChange={(event) => updateSocialLink(index, { enabled: event.target.checked })}
+                            />
+                            แสดง
+                          </label>
+                        </div>
+                        {link.platform === "custom" ? (
+                          <div className="mb-3">
+                            <label className="mb-1 block text-xs font-semibold text-slate-400">Icon class (Font Awesome)</label>
+                            <input
+                              value={link.iconClass}
+                              onChange={(event) => updateSocialLink(index, { iconClass: event.target.value })}
+                              className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white"
+                              placeholder="fa-brands fa-facebook-f"
+                            />
+                          </div>
+                        ) : null}
+                        <div className="mb-3">
+                          <label className="mb-1 block text-xs font-semibold text-slate-400">
+                            รูปไอคอน (ถ้ามี จะใช้แทน Font Awesome)
+                          </label>
+                          <AdminProductImagePicker
+                            value={link.imageUrl}
+                            onChange={(imageUrl) => updateSocialLink(index, { imageUrl })}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => deleteSocialLink(index)}
+                          className="flex items-center gap-1 rounded-md bg-rose-600 px-2.5 py-1.5 text-xs text-white hover:bg-rose-500"
+                        >
+                          <TrashIcon />
+                          ลบ
+                        </button>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 

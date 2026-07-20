@@ -44,13 +44,45 @@ export type HeaderTopbarLanguage = {
   enabled: boolean;
 };
 
+export type HeaderTopbarSocialPlatform =
+  | "facebook"
+  | "line"
+  | "youtube"
+  | "instagram"
+  | "tiktok"
+  | "x"
+  | "custom";
+
+export type HeaderTopbarSocialLink = {
+  id: string;
+  platform: HeaderTopbarSocialPlatform;
+  label: string;
+  url: string;
+  iconClass: string;
+  imageUrl: string;
+  sortOrder: number;
+  enabled: boolean;
+};
+
+export const TOPBAR_SOCIAL_PLATFORM_PRESETS: Record<
+  HeaderTopbarSocialPlatform,
+  { label: string; iconClass: string }
+> = {
+  facebook: { label: "Facebook", iconClass: "fa-brands fa-facebook-f" },
+  line: { label: "LINE", iconClass: "fa-brands fa-line" },
+  youtube: { label: "YouTube", iconClass: "fa-brands fa-youtube" },
+  instagram: { label: "Instagram", iconClass: "fa-brands fa-instagram" },
+  tiktok: { label: "TikTok", iconClass: "fa-brands fa-tiktok" },
+  x: { label: "X (Twitter)", iconClass: "fa-brands fa-x-twitter" },
+  custom: { label: "อื่นๆ", iconClass: "fa-light fa-link" },
+};
+
 export type HeaderTopbarConfig = {
   enabled: boolean;
-  facebookUrl: string;
-  facebookFollowers: string;
   phone: string;
   defaultLanguage: string;
   languages: HeaderTopbarLanguage[];
+  socialLinks: HeaderTopbarSocialLink[];
 };
 
 export type HeaderCmsState = {
@@ -65,13 +97,45 @@ export const defaultHeaderTopbarLanguages: HeaderTopbarLanguage[] = [
   { code: "en", label: "English", enabled: true },
 ];
 
+export const defaultHeaderTopbarSocialLinks: HeaderTopbarSocialLink[] = [
+  {
+    id: "social-facebook",
+    platform: "facebook",
+    label: "Facebook",
+    url: "https://facebook.com",
+    iconClass: TOPBAR_SOCIAL_PLATFORM_PRESETS.facebook.iconClass,
+    imageUrl: "",
+    sortOrder: 0,
+    enabled: true,
+  },
+  {
+    id: "social-line",
+    platform: "line",
+    label: "LINE",
+    url: "https://line.me",
+    iconClass: TOPBAR_SOCIAL_PLATFORM_PRESETS.line.iconClass,
+    imageUrl: "",
+    sortOrder: 1,
+    enabled: true,
+  },
+  {
+    id: "social-youtube",
+    platform: "youtube",
+    label: "YouTube",
+    url: "https://youtube.com",
+    iconClass: TOPBAR_SOCIAL_PLATFORM_PRESETS.youtube.iconClass,
+    imageUrl: "",
+    sortOrder: 2,
+    enabled: true,
+  },
+];
+
 export const defaultHeaderTopbar: HeaderTopbarConfig = {
   enabled: true,
-  facebookUrl: "https://facebook.com",
-  facebookFollowers: "7.5k ผู้ติดตาม",
   phone: "02-123-4567",
   defaultLanguage: "th",
   languages: defaultHeaderTopbarLanguages,
+  socialLinks: defaultHeaderTopbarSocialLinks,
 };
 
 export const defaultShopMegaMenu: HeaderMegaMenuConfig = {
@@ -215,6 +279,44 @@ function normalizeMenuItem(item: HeaderMenuItem, index: number): HeaderMenuItem 
   };
 }
 
+function normalizeSocialLinks(
+  topbar: HeaderTopbarConfig | (Partial<HeaderTopbarConfig> & { facebookUrl?: string; facebookFollowers?: string }) | undefined,
+): HeaderTopbarSocialLink[] {
+  if (Array.isArray(topbar?.socialLinks) && topbar.socialLinks.length) {
+    return topbar.socialLinks.map((link, index) => ({
+      id: link.id || `social-${index}`,
+      platform: link.platform || "custom",
+      label: link.label || TOPBAR_SOCIAL_PLATFORM_PRESETS[link.platform || "custom"]?.label || "Social",
+      url: link.url || "#",
+      iconClass:
+        link.iconClass ||
+        TOPBAR_SOCIAL_PLATFORM_PRESETS[link.platform || "custom"]?.iconClass ||
+        TOPBAR_SOCIAL_PLATFORM_PRESETS.custom.iconClass,
+      imageUrl: link.imageUrl || "",
+      sortOrder: typeof link.sortOrder === "number" ? link.sortOrder : index,
+      enabled: link.enabled ?? true,
+    }));
+  }
+
+  const legacyFacebookUrl = (topbar as { facebookUrl?: string } | undefined)?.facebookUrl;
+  if (legacyFacebookUrl) {
+    return [
+      {
+        id: "social-facebook",
+        platform: "facebook",
+        label: "Facebook",
+        url: legacyFacebookUrl,
+        iconClass: TOPBAR_SOCIAL_PLATFORM_PRESETS.facebook.iconClass,
+        imageUrl: "",
+        sortOrder: 0,
+        enabled: true,
+      },
+    ];
+  }
+
+  return defaultHeaderTopbarSocialLinks;
+}
+
 function normalizeTopbar(topbar: HeaderTopbarConfig | undefined): HeaderTopbarConfig {
   const languages = Array.isArray(topbar?.languages) && topbar.languages.length
     ? topbar.languages.map((language) => ({
@@ -230,11 +332,10 @@ function normalizeTopbar(topbar: HeaderTopbarConfig | undefined): HeaderTopbarCo
 
   return {
     enabled: topbar?.enabled ?? defaultHeaderTopbar.enabled,
-    facebookUrl: topbar?.facebookUrl || defaultHeaderTopbar.facebookUrl,
-    facebookFollowers: topbar?.facebookFollowers || defaultHeaderTopbar.facebookFollowers,
     phone: topbar?.phone || defaultHeaderTopbar.phone,
     defaultLanguage,
     languages,
+    socialLinks: normalizeSocialLinks(topbar),
   };
 }
 
@@ -284,4 +385,15 @@ export function getMenuMegaMenu(item: HeaderMenuItem): HeaderMegaMenuConfig | nu
 
 export function getVisibleTopbarLanguages(topbar: HeaderTopbarConfig): HeaderTopbarLanguage[] {
   return topbar.languages.filter((language) => language.enabled);
+}
+
+export function getVisibleTopbarSocialLinks(topbar: HeaderTopbarConfig): HeaderTopbarSocialLink[] {
+  return [...topbar.socialLinks]
+    .filter((link) => link.enabled && link.url.trim())
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+export function getTopbarSocialIconClass(link: HeaderTopbarSocialLink): string {
+  if (link.iconClass.trim()) return link.iconClass.trim();
+  return TOPBAR_SOCIAL_PLATFORM_PRESETS[link.platform]?.iconClass ?? TOPBAR_SOCIAL_PLATFORM_PRESETS.custom.iconClass;
 }

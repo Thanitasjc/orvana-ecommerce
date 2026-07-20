@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getVisibleTopbarLanguages, type HeaderTopbarConfig } from "@/lib/cms/headerCms";
+import { TopbarSocialIcon } from "@/components/shop/TopbarSocialIcon";
+import {
+  getVisibleTopbarLanguages,
+  getVisibleTopbarSocialLinks,
+  type HeaderTopbarConfig,
+} from "@/lib/cms/headerCms";
 
 type HeaderTopbarProps = {
   config: HeaderTopbarConfig;
@@ -9,6 +14,7 @@ type HeaderTopbarProps = {
 
 export function HeaderTopbar({ config }: HeaderTopbarProps) {
   const languages = getVisibleTopbarLanguages(config);
+  const socialLinks = getVisibleTopbarSocialLinks(config);
   const [langOpen, setLangOpen] = useState(false);
   const [languageCode, setLanguageCode] = useState(config.defaultLanguage);
   const langRef = useRef<HTMLDivElement>(null);
@@ -42,23 +48,32 @@ export function HeaderTopbar({ config }: HeaderTopbarProps) {
         <div className="row align-items-center py-2">
           <div className="col-md-6">
             <div className="tp-header-top-menu d-flex align-items-center justify-content-md-start justify-content-center">
-              <div className="tp-header-top-black d-flex align-items-center">
-                <div className="tp-header-info-item">
-                  <a href={config.facebookUrl} target="_blank" rel="noopener noreferrer">
-                    <span>
-                      <i className="fa-brands fa-facebook-f" aria-hidden="true" />
-                    </span>
-                    {config.facebookFollowers}
-                  </a>
-                </div>
-                <div className="tp-header-info-item">
-                  <a href={`tel:${phoneHref}`}>
-                    <span>
-                      <i className="fa-light fa-phone" aria-hidden="true" />
-                    </span>
-                    {config.phone}
-                  </a>
-                </div>
+              <div className="tp-header-top-black d-flex align-items-center flex-wrap">
+                {socialLinks.map((link) => (
+                  <div key={link.id} className="tp-header-info-item">
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={link.label}
+                      title={link.label}
+                    >
+                      <span>
+                        <TopbarSocialIcon link={link} />
+                      </span>
+                    </a>
+                  </div>
+                ))}
+                {config.phone ? (
+                  <div className="tp-header-info-item">
+                    <a href={`tel:${phoneHref}`}>
+                      <span>
+                        <i className="fa-light fa-phone" aria-hidden="true" />
+                      </span>
+                      {config.phone}
+                    </a>
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>

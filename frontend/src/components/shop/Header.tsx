@@ -156,7 +156,9 @@ export function Header({ initialCms = defaultHeaderCms }: HeaderProps) {
               </div>
               <div className="col-xl-4 d-none d-xl-flex align-items-center">
                 <Suspense fallback={null}>
-                  <HeaderSearch />
+                  <div className="w-100">
+                    <HeaderSearch />
+                  </div>
                 </Suspense>
               </div>
               <div className="col-xl-2 col-lg-10 col-md-6 col-6">

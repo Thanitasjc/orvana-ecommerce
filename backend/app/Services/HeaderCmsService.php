@@ -150,12 +150,58 @@ class HeaderCmsService
 
         return [
             'enabled' => array_key_exists('enabled', $topbar) ? (bool) $topbar['enabled'] : $defaults['enabled'],
-            'facebookUrl' => filled($topbar['facebookUrl'] ?? null) ? $topbar['facebookUrl'] : $defaults['facebookUrl'],
-            'facebookFollowers' => filled($topbar['facebookFollowers'] ?? null) ? $topbar['facebookFollowers'] : $defaults['facebookFollowers'],
             'phone' => filled($topbar['phone'] ?? null) ? $topbar['phone'] : $defaults['phone'],
             'defaultLanguage' => $defaultLanguage,
             'languages' => $normalizedLanguages,
+            'socialLinks' => $this->mergeSocialLinks($topbar, $defaults['socialLinks']),
         ];
+    }
+
+    private function mergeSocialLinks(array $topbar, array $defaultLinks): array
+    {
+        $links = $topbar['socialLinks'] ?? null;
+
+        if (! is_array($links) || count($links) === 0) {
+            if (filled($topbar['facebookUrl'] ?? null)) {
+                return [[
+                    'id' => 'social-facebook',
+                    'platform' => 'facebook',
+                    'label' => 'Facebook',
+                    'url' => $topbar['facebookUrl'],
+                    'iconClass' => 'fa-brands fa-facebook-f',
+                    'imageUrl' => '',
+                    'sortOrder' => 0,
+                    'enabled' => true,
+                ]];
+            }
+
+            return $defaultLinks;
+        }
+
+        $platformIcons = [
+            'facebook' => 'fa-brands fa-facebook-f',
+            'line' => 'fa-brands fa-line',
+            'youtube' => 'fa-brands fa-youtube',
+            'instagram' => 'fa-brands fa-instagram',
+            'tiktok' => 'fa-brands fa-tiktok',
+            'x' => 'fa-brands fa-x-twitter',
+            'custom' => 'fa-light fa-link',
+        ];
+
+        return array_values(array_map(function (array $link, int $index) use ($platformIcons) {
+            $platform = filled($link['platform'] ?? null) ? $link['platform'] : 'custom';
+
+            return [
+                'id' => filled($link['id'] ?? null) ? $link['id'] : ('social-'.$index),
+                'platform' => $platform,
+                'label' => filled($link['label'] ?? null) ? $link['label'] : ucfirst($platform),
+                'url' => filled($link['url'] ?? null) ? $link['url'] : '#',
+                'iconClass' => filled($link['iconClass'] ?? null) ? $link['iconClass'] : ($platformIcons[$platform] ?? $platformIcons['custom']),
+                'imageUrl' => $link['imageUrl'] ?? '',
+                'sortOrder' => is_numeric($link['sortOrder'] ?? null) ? (int) $link['sortOrder'] : $index,
+                'enabled' => array_key_exists('enabled', $link) ? (bool) $link['enabled'] : true,
+            ];
+        }, $links, array_keys($links)));
     }
 
     private function defaults(): array
@@ -249,13 +295,43 @@ class HeaderCmsService
             ],
             'topbar' => [
                 'enabled' => true,
-                'facebookUrl' => 'https://facebook.com',
-                'facebookFollowers' => '7.5k ผู้ติดตาม',
                 'phone' => '02-123-4567',
                 'defaultLanguage' => 'th',
                 'languages' => [
                     ['code' => 'th', 'label' => 'ไทย', 'enabled' => true],
                     ['code' => 'en', 'label' => 'English', 'enabled' => true],
+                ],
+                'socialLinks' => [
+                    [
+                        'id' => 'social-facebook',
+                        'platform' => 'facebook',
+                        'label' => 'Facebook',
+                        'url' => 'https://facebook.com',
+                        'iconClass' => 'fa-brands fa-facebook-f',
+                        'imageUrl' => '',
+                        'sortOrder' => 0,
+                        'enabled' => true,
+                    ],
+                    [
+                        'id' => 'social-line',
+                        'platform' => 'line',
+                        'label' => 'LINE',
+                        'url' => 'https://line.me',
+                        'iconClass' => 'fa-brands fa-line',
+                        'imageUrl' => '',
+                        'sortOrder' => 1,
+                        'enabled' => true,
+                    ],
+                    [
+                        'id' => 'social-youtube',
+                        'platform' => 'youtube',
+                        'label' => 'YouTube',
+                        'url' => 'https://youtube.com',
+                        'iconClass' => 'fa-brands fa-youtube',
+                        'imageUrl' => '',
+                        'sortOrder' => 2,
+                        'enabled' => true,
+                    ],
                 ],
             ],
         ];
